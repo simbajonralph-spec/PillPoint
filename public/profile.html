@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Profile — PillPoint</title>
+<link rel="icon" type="image/svg+xml" href="/img/logo-mark.svg" />
+<link rel="stylesheet" href="/css/style.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+</head>
+<body>
+<script src="/js/api.js"></script>
+<script src="/js/layout.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(async function () {
+  const user = await guardPage(null, 'Profile', 'Your account information');
+  if (!user) return;
+  const content = document.getElementById('page-content');
+
+  if (user.role === 'pharmacy_staff') {
+    document.querySelector('.topbar-heading h1').textContent = 'Pharmacy Profile';
+    document.querySelector('.topbar-heading .sub').textContent = 'Manage your pharmacy identity and business details';
+    await renderPharmacyProfile();
+  } else {
+    renderBasicProfile(user);
+  }
+
+  function renderBasicProfile(u) {
+    let profileImageData = u.profile_image || null;
+    content.innerHTML = `
+      <div class="profile-wrap">
+        <div class="card card-elevated">
+          <div class="field">
+            <label>Profile Picture</label>
+            <input id="profile-image-input" type="file" accept="image/png,image/jpeg,image/webp" />
+            <img id="profile-image-preview" src="${profileImageData || ''}" alt="Profile preview" style="display:${profileImageData ? 'block' : 'none'};width:88px;height:88px;object-fit:cover;border-radius:50%;margin-top:10px;" />
+          </div>
+          <div class="field">
+            <label>Username</label>
+            <input id="username-input" value="${escapeHtml(u.username || u.name)}" />
+          </div>
+          <div class="field">
+            <label>Mobile Number</label>
+            <input id="user-phone-input" type="tel" value="${escapeHtml(u.phone || '')}" placeholder="+639XXXXXXXXX" pattern="\+639[0-9]{9}" />
+          </div>
+          <div class="field"><label>Email</label><input value="${escapeHtml(u.email)}" disabled></div>
+          <div class="field"><label>Role</label><input value="${escapeHtml(u.role.replace('_',' '))}" disabled></div>
+          <button class="btn btn-primary" id="save-btn">Save Changes</button>
+          <p class="text-sm muted mt-16">Email and role can't be changed here — contact your admin if those need to change.</p>
+        </div>
+      </div>
+    `;
+    document.getElementById('profile-image-input').addEventListener('change', () => {
+      const file = document.getElementById('profile-image-input').files[0];
+      if (!file) return;
+      if (file.size > 4 * 1024 * 1024) { toast('Please choose an image under 4MB.', 'error'); return; }
+      const reader = new FileReader();
+      reader.onload = () => {
+        profileImageData = reader.result;
+        const preview = document.getElementById('profile-image-preview');
+        preview.src = profileImageData;
+        preview.style.display = 'block';
+      };
+      reader.readAsDataURL(file);
+    });
+    document.getElementById('save-btn').addEventListener('click', async () => {
+      try {
+        const res = await Api.put('/api/auth/profile', {
+          username: document.getElementById('username-input').value.trim(),
+          phone: document.getElementById('user-phone-input').value.trim(),
+          profile_image: profileImageData,
+        });
+        toast('Profile updated.');
+        const nameEl = document.querySelector('.user-box .user-name');
+        if (nameEl) nameEl.textContent = res.user.username;
+        const profileLink = document.querySelector('.topbar-profile');
+        if (profileLink && profileImageData) profileLink.innerHTML = `<img src="${escapeHtml(profileImageData)}" alt="" />`;
+      } catch (err) {
+        toast(err.message, 'error');
+      }
+    });
+  }
+
+  async function renderPharmacyProfile() {
+    content.innerHTML = skeletonLoader('cards', 2);
+    let data;
+    try {
+      data = await Api.get('/api/pharmacy/profile');
+    } catch (err) {
+      content.innerHTML = `<div class="alert alert-error">${escapeHtml(err.message)}</div>`;
+      return;
+    }
+    const p = data.pharmacy;
+    let pickedLat = p.latitude, pickedLng = p.longitude;
+    let profileImageData = p.profile_image || p.store_image || null;
+    let coverImageData = p.cover_image || null;
+    const avatarFallback = () => `<span class="pharmacy-avatar-name">${escapeHtml(p.name)}</span>`;
+    const coverFallback = () => `<div class="pharmacy-cover-fallback"><strong>${escapeHtml(p.name)}</strong></div>`;
+    const averageRating = data.reviews.length
+      ? (data.reviews.reduce((total, review) => total + review.rating, 0) / data.reviews.length).toFixed(1)
+      : '—';
+
+    content.innerHTML = `
+      <div class="pharmacy-settings">
+        <section class="card pharmacy-settings-hero">
+          <div class="pharmacy-cover-preview" id="cover-preview">
+            ${coverImageData ? `<img src="${escapeHtml(coverImageData)}" alt="Pharmacy cover preview" />` : coverFallback()}
+          </div>
+          <div class="pharmacy-settings-identity">
+            <div class="pharmacy-avatar-preview" id="profile-preview">
+              ${profileImageData ? `<img src="${escapeHtml(profileImageData)}" alt="Pharmacy profile preview" />` : avatarFallback()}
+            </div>
+            <div>
+              <h2>${escapeHtml(p.name)}</h2>
+              <div>${(p.verification_status || (p.verified ? 'VERIFIED' : 'PENDING')) === 'VERIFIED' ? '<span class="badge badge-verified">Verified</span>' : '<span class="badge badge-unverified">Pending verification</span>'}</div>
+            </div>
+            <div class="pharmacy-settings-rating"><strong>★ ${averageRating}</strong><span>${data.reviews.length} review${data.reviews.length === 1 ? '' : 's'}</span></div>
+          </div>
+        </section>
+        <section class="card mt-16">
+          <div class="card-title">Pharmacy Identity</div>
+          <div class="field"><label for="pharmacy-name-input">Pharmacy Name</label><input id="pharmacy-name-input" value="${escapeHtml(p.name)}" required /></div>
+          <div class="grid grid-2">
+            <div class="field">
+              <label for="profile-image-input">Pharmacy Profile Photo <span class="muted text-sm">(optional)</span></label>
+              <input id="profile-image-input" type="file" accept="image/png,image/jpeg,image/webp" />
+              <div class="text-sm muted mt-8">Skip or remove the photo to display your pharmacy name instead. Maximum 4MB.</div>
+              <button class="btn btn-outline btn-sm mt-8" type="button" id="clear-profile-image">Remove photo</button>
+            </div>
+            <div class="field">
+              <label for="cover-image-input">Pharmacy Cover Photo <span class="muted text-sm">(optional)</span></label>
+              <input id="cover-image-input" type="file" accept="image/png,image/jpeg,image/webp" />
+              <div class="text-sm muted mt-8">Skip or remove the photo to use a pharmacy-name cover design. Maximum 4MB.</div>
+              <button class="btn btn-outline btn-sm mt-8" type="button" id="clear-cover-image">Remove photo</button>
+            </div>
+          </div>
+          <p class="text-sm muted">Name and verification status changes are reflected across pharmacy listings and your account header.</p>
+        </section>
+        <section class="card mt-16">
+          <div class="card-title">Owner Information</div>
+          <p class="text-sm muted">This information is visible only within your Pharmacy Profile.</p>
+          <div class="grid grid-2">
+            <div class="field"><label for="owner-first-name-input">Owner First Name</label><input id="owner-first-name-input" value="${escapeHtml(p.owner_first_name || '')}" /></div>
+            <div class="field"><label for="owner-last-name-input">Owner Last Name</label><input id="owner-last-name-input" value="${escapeHtml(p.owner_last_name || '')}" /></div>
+          </div>
+        </section>
+        <section class="card mt-16">
+          <div class="card-title">Business Contact Information</div>
+          <div class="grid grid-2">
+            <div class="field"><label for="phone-input">Business / Pharmacy Contact Number</label><input id="phone-input" type="tel" value="${escapeHtml(p.phone || '')}" /></div>
+            <div class="field"><label for="business-email-input">Business Email</label><input id="business-email-input" type="email" value="${escapeHtml(p.business_email || '')}" /></div>
+          </div>
+          <div class="field"><label for="address-input">Pharmacy Address</label><input id="address-input" value="${escapeHtml(p.address || '')}" required /></div>
+          <div class="field"><label>Description</label><textarea id="description-input" rows="3">${escapeHtml(p.description || '')}</textarea></div>
+          <div class="grid grid-2">
+            <div class="field"><label>Operating Hours</label><input id="hours-input" value="${escapeHtml(p.hours || '')}" placeholder="e.g. Mon-Sat: 8AM-9PM" /></div>
+          </div>
+          <div class="field">
+            <label>Location <span class="muted text-sm">(click the map to update your pin)</span></label>
+            <div class="map-placeholder" style="height:220px;"><div id="picker-map"></div></div>
+            <p class="text-sm muted mt-8" id="picker-coords">Current: ${p.latitude.toFixed(5)}, ${p.longitude.toFixed(5)}</p>
+          </div>
+          <button class="btn btn-primary" id="save-btn">Save Changes</button>
+        </section>
+        <section class="card mt-16">
+          <div class="card-title">Customer Ratings and Reviews</div>
+          <div class="pharmacy-rating-breakdown">
+            <div class="pharmacy-rating-breakdown-heading"><strong>${data.reviews.length ? `${averageRating} ★` : 'No ratings yet'}</strong><span>${data.reviews.length ? `Based on ${data.reviews.length} reviews` : 'No customer ratings have been submitted'}</span></div>
+            <div class="rating-distribution">${data.ratingDistribution.map(item => {
+              const percent = data.reviews.length ? Math.round(item.count / data.reviews.length * 100) : 0;
+              return `<div class="rating-distribution-row"><span>${item.rating} ${item.rating === 1 ? 'Star' : 'Stars'}</span><div class="rating-distribution-track"><span style="width:${percent}%"></span></div><span>${item.count}</span></div>`;
+            }).join('')}</div>
+          </div>
+          ${data.reviews.length ? data.reviews.map(review => `
+            <article class="pharmacy-review-row">
+              <div class="flex justify-between items-center"><strong>@${escapeHtml(review.customer_username || review.customer_name)}</strong><span class="review-stars">${'★'.repeat(review.rating)}${'☆'.repeat(5 - review.rating)}</span></div>
+              <div class="text-sm muted">${new Date(review.updated_at).toLocaleDateString()}</div>
+              ${review.comment ? `<p>${escapeHtml(review.comment)}</p>` : ''}
+            </article>`).join('') : '<div class="empty-state"><h3>No reviews yet</h3><p>Customer feedback will appear here.</p></div>'}
+          <p class="text-sm muted mt-16">Reviews are read-only for pharmacy staff.</p>
+        </section>
+      </div>
+    `;
+
+    function bindImagePreview(inputId, previewId, updateImage, renderFallback) {
+      document.getElementById(inputId).addEventListener('change', () => {
+        const file = document.getElementById(inputId).files[0];
+        if (!file) return;
+        if (file.size > 4 * 1024 * 1024) {
+          document.getElementById(inputId).value = '';
+          toast('Please choose an image under 4MB.', 'error');
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => {
+          updateImage(reader.result);
+          const preview = document.getElementById(previewId);
+          preview.innerHTML = `<img src="${escapeHtml(reader.result)}" alt="Image preview" />`;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+    bindImagePreview('profile-image-input', 'profile-preview', image => { profileImageData = image; }, avatarFallback);
+    bindImagePreview('cover-image-input', 'cover-preview', image => { coverImageData = image; }, coverFallback);
+    document.getElementById('clear-profile-image').addEventListener('click', () => {
+      profileImageData = null;
+      document.getElementById('profile-image-input').value = '';
+      document.getElementById('profile-preview').innerHTML = avatarFallback();
+    });
+    document.getElementById('clear-cover-image').addEventListener('click', () => {
+      coverImageData = null;
+      document.getElementById('cover-image-input').value = '';
+      document.getElementById('cover-preview').innerHTML = coverFallback();
+    });
+
+    const map = L.map('picker-map').setView([p.latitude, p.longitude], 14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+    let marker = L.marker([p.latitude, p.longitude]).addTo(map);
+    setTimeout(() => map.invalidateSize(), 50);
+
+    map.on('click', (e) => {
+      pickedLat = e.latlng.lat;
+      pickedLng = e.latlng.lng;
+      map.removeLayer(marker);
+      marker = L.marker([pickedLat, pickedLng]).addTo(map);
+      document.getElementById('picker-coords').textContent = `Pin set at ${pickedLat.toFixed(5)}, ${pickedLng.toFixed(5)}`;
+    });
+
+    document.getElementById('save-btn').addEventListener('click', async () => {
+      try {
+        const saved = await Api.put('/api/pharmacy/profile', {
+          name: document.getElementById('pharmacy-name-input').value.trim(),
+          phone: document.getElementById('phone-input').value.trim(),
+          business_email: document.getElementById('business-email-input').value.trim(),
+          address: document.getElementById('address-input').value.trim(),
+          latitude: pickedLat,
+          longitude: pickedLng,
+          profile_image: profileImageData,
+          cover_image: coverImageData,
+          description: document.getElementById('description-input').value.trim(),
+          hours: document.getElementById('hours-input').value.trim(),
+          owner_first_name: document.getElementById('owner-first-name-input').value.trim(),
+          owner_last_name: document.getElementById('owner-last-name-input').value.trim(),
+        });
+        const pharmacyName = document.getElementById('pharmacy-name-input').value.trim();
+        p.name = pharmacyName;
+        p.profile_image = saved.pharmacy.profile_image;
+        p.cover_image = saved.pharmacy.cover_image;
+        document.querySelector('.pharmacy-settings-identity h2').textContent = pharmacyName;
+        document.querySelectorAll('.pharmacy-avatar-name').forEach(el => { el.textContent = pharmacyName; });
+        document.querySelectorAll('.pharmacy-cover-fallback strong').forEach(el => { el.textContent = pharmacyName; });
+        const topbarProfile = document.getElementById('topbar-pharmacy-profile');
+        if (topbarProfile) {
+          const label = topbarProfile.querySelector('.topbar-user-name');
+          if (label) label.textContent = pharmacyName;
+          const avatar = topbarProfile.querySelector('.topbar-profile-avatar');
+          if (avatar) avatar.innerHTML = p.profile_image
+            ? `<img src="${escapeHtml(p.profile_image)}" alt="" />`
+            : '<span aria-hidden="true">Rx</span>';
+          topbarProfile.setAttribute('aria-label', `Open ${pharmacyName} Pharmacy Profile`);
+        }
+        const sidebarName = document.querySelector('.sidebar .user-name');
+        if (sidebarName) sidebarName.textContent = pharmacyName;
+        toast('Profile updated.');
+      } catch (err) {
+        toast(err.message, 'error');
+      }
+    });
+  }
+})();
+</script>
+</body>
+</html>

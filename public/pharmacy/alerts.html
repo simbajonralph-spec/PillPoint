@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Stock Alerts — PillPoint</title>
+<link rel="icon" type="image/svg+xml" href="/img/logo-mark.svg" />
+<link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+<script src="/js/api.js"></script>
+<script src="/js/layout.js"></script>
+<script>
+(async function () {
+  const user = await guardPage(['pharmacy_staff'], 'Stock Alerts', 'Medicines at or below their low-stock threshold');
+  if (!user) return;
+  const content = document.getElementById('page-content');
+  content.innerHTML = skeletonLoader('table', 4);
+  try {
+    const data = await Api.get('/api/pharmacy/alerts');
+    if (!data.alerts.length) {
+      content.innerHTML = `<div class="empty-state"><div class="icon">&#9989;</div><h3>All stocked up</h3><p>No low or out-of-stock items right now.</p></div>`;
+      return;
+    }
+    content.innerHTML = `
+      <div class="card">
+        <table>
+          <thead><tr><th>Medicine</th><th>Stock</th><th>Threshold</th><th>Status</th></tr></thead>
+          <tbody>
+            ${data.alerts.map(a => `
+              <tr>
+                <td>${escapeHtml(a.medicine_name)}</td>
+                <td>${a.stock_quantity}</td>
+                <td>${a.low_stock_threshold}</td>
+                <td>${stockBadge(a.stock_quantity, a.low_stock_threshold)}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+      <a href="/pharmacy/inventory.html" class="btn btn-primary mt-16" style="display:inline-flex;">Restock in Inventory</a>
+    `;
+  } catch (err) {
+    content.innerHTML = `<div class="alert alert-error">${escapeHtml(err.message)}</div>`;
+  }
+})();
+</script>
+</body>
+</html>

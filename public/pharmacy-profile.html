@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pharmacy Profile — PillPoint</title>
+<link rel="icon" type="image/svg+xml" href="/img/logo-mark.svg" />
+<link rel="stylesheet" href="/css/style.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+</head>
+<body>
+<main id="public-profile-shell" class="public-profile-shell" hidden>
+  <header class="public-profile-header"><a href="/search.html" class="brand"><img src="/img/logo-mark.svg" alt="PillPoint" width="34" height="34" /><strong>PillPoint</strong></a><a class="btn btn-outline btn-sm" href="/login.html">Sign In</a></header>
+  <div id="guest-page-content" class="public-profile-content"></div>
+</main>
+<script src="/js/api.js"></script>
+<script src="/js/layout.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(async function () {
+  let user = null;
+  try { user = (await Api.get('/api/auth/me')).user; } catch (err) { /* public profile remains available */ }
+  let content;
+  if (user) {
+    user = await guardPage(null, 'Pharmacy Profile', 'Everything currently available at this pharmacy');
+    content = document.getElementById('page-content');
+  } else {
+    document.getElementById('public-profile-shell').hidden = false;
+    content = document.getElementById('guest-page-content');
+  }
+
+  const id = new URLSearchParams(location.search).get('id');
+  if (!id) {
+    content.innerHTML = `<div class="alert alert-error">No pharmacy specified.</div>`;
+    return;
+  }
+
+  content.innerHTML = skeletonLoader('cards', 3);
+
+  function loadWithLocation() {
+    return new Promise((resolve) => {
+      if (!navigator.geolocation) return resolve({});
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        () => resolve({}),
+        { timeout: 3000 }
+      );
+    });
+  }
+
+  const loc = await loadWithLocation();
+  let data;
+  try {
+    const params = new URLSearchParams();
+    if (loc.lat != null) { params.set('lat', loc.lat); params.set('lng', loc.lng); }
+    data = await Api.get(`/api/public/pharmacies/${id}?` + params.toString());
+  } catch (err) {
+    content.innerHTML = `<div class="alert alert-error">${escapeHtml(err.message)}</div>`;
+    return;
+  }
+
+  const p = data.pharmacy;
+  const canReview = user?.role === 'customer';
+  const starsFor = rating => `${'★'.repeat(rating)}${'☆'.repeat(5 - rating)}`;
+  const ratingDescription = rating => ({ 1: 'Bad', 2: 'Poor', 3: 'Average', 4: 'Good', 5: 'Excellent' }[rating] || 'Select a rating');
+  const distributionTotal = data.ratingDistribution.reduce((total, item) => total + item.count, 0);
+  const reviewSignInUrl = `/login.html?next=${encodeURIComponent(`/pharmacy-profile.html?id=${id}`)}`;
+  content.innerHTML = `
+    <section class="card pharmacy-public-profile fade-in-up">
+      <div class="pharmacy-cover-preview">
+        ${p.cover_image ? `<img src="${escapeHtml(p.cover_image)}" alt="${escapeHtml(p.name)} cover" />` : `<div class="pharmacy-cover-fallback"><strong>${escapeHtml(p.name)}</strong></div>`}
+      </div>
+      <div class="pharmacy-public-identity">
+        <div class="pharmacy-avatar-preview">${(p.profile_image || p.store_image) ? `<img src="${escapeHtml(p.profile_image || p.store_image)}" alt="${escapeHtml(p.name)} profile" />` : `<span class="pharmacy-avatar-name">${escapeHtml(p.name)}</span>`}</div>
+        <div class="pharmacy-public-name">
+          <h2>${escapeHtml(p.name)}</h2>
+          ${(p.verification_status || (p.verified ? 'VERIFIED' : 'PENDING')) === 'VERIFIED' ? '<span class="badge badge-verified">Verified</span>' : '<span class="badge badge-unverified">Pending verification</span>'}
+        </div>
+        <div class="pharmacy-rating-summary">${p.rating_count ? `<strong>★ ${p.average_rating}</strong><span>Based on ${p.rating_count} review${p.rating_count === 1 ? '' : 's'}</span>` : '<strong>No ratings yet</strong><span>Be the first to review</span>'}</div>
+      </div>
+      <div class="pharmacy-public-details">
+        ${p.rating_count ? `<div class="pharmacy-stars" aria-label="Average rating ${p.average_rating} out of 5">${starsFor(Math.round(p.average_rating))} <strong>${p.average_rating} / 5</strong></div>` : '<div class="pharmacy-stars">☆ No ratings yet</div>'}
+        ${p.description ? `<p>${escapeHtml(p.description)}</p>` : ''}
+        <div class="grid grid-2 mt-16" style="gap:10px;">
+          <div class="text-sm"><strong>Address:</strong> ${escapeHtml(p.address)}</div>
+          ${p.phone ? `<div class="text-sm"><strong>Phone:</strong> ${escapeHtml(p.phone)}</div>` : ''}
+          ${p.business_email ? `<div class="text-sm"><strong>Business Email:</strong> <a href="mailto:${escapeHtml(p.business_email)}">${escapeHtml(p.business_email)}</a></div>` : ''}
+          ${p.hours ? `<div class="text-sm"><strong>Hours:</strong> ${escapeHtml(p.hours)}</div>` : ''}
+          ${p.distance_km != null ? `<div class="text-sm" style="font-weight:700;color:var(--teal-dark);">${p.distance_km} km away</div>` : ''}
+        </div>
+      </div>
+    </section>
+
+    <section class="card mt-16">
+      <div class="card-title">Ratings and Reviews</div>
+      ${canReview ? `
+        ${data.myRating ? `<div class="your-review-summary"><strong>Your Review</strong><span class="review-stars">${starsFor(data.myRating.rating)} <span class="rating-description">${ratingDescription(data.myRating.rating)}</span></span><p>${escapeHtml(data.myRating.comment || 'No written comment.')}</p><div class="flex" style="gap:8px;flex-wrap:wrap;"><button type="button" class="btn btn-outline btn-sm" id="edit-review">Edit Review</button><button type="button" class="btn btn-outline btn-sm" id="delete-review">Delete Review</button></div></div>` : ''}
+        <div class="rating-form" id="rating-form" ${data.myRating ? 'hidden' : ''}>
+          <div class="rating-prompt">Tell others about your experience with ${escapeHtml(p.name)}</div>
+          <label>How would you rate this pharmacy?</label>
+          <div class="rating-picker" role="group" aria-label="Choose a rating from one to five stars">
+            ${[1, 2, 3, 4, 5].map(value => `<button type="button" class="rating-star" data-rating="${value}" aria-label="${value} star${value === 1 ? '' : 's'}" aria-pressed="false">★</button>`).join('')}
+          </div>
+          <div class="rating-selected-label" id="rating-selected-label" role="status" aria-live="polite">${ratingDescription(data.myRating?.rating || 0)}</div>
+          <div class="rating-validation-message" id="rating-error" role="alert" hidden></div>
+          <div class="field review-comment-field"><label for="review-comment">Tell others about your experience with ${escapeHtml(p.name)}</label><textarea id="review-comment" rows="5" maxlength="200" placeholder="Write about your experience with this pharmacy...">${escapeHtml(data.myRating?.comment || '')}</textarea><div class="review-comment-footer"><span class="rating-validation-message" id="comment-error" role="alert" hidden></span><span class="character-count"><span id="comment-count">${(data.myRating?.comment || '').length}</span>/200</span></div></div>
+          <div class="flex" style="gap:8px;flex-wrap:wrap;"><button type="button" class="btn btn-primary" id="submit-review" disabled>${data.myRating ? 'Save Changes' : 'Submit Review'}</button>${data.myRating ? '<button type="button" class="btn btn-outline" id="cancel-edit">Cancel</button>' : ''}</div>
+        </div>` : user?.role === 'customer' ? '<div class="alert alert-info">Complete a reservation at this pharmacy to leave a rating and review.</div>' : user ? '<div class="alert alert-info">Only customer accounts can submit pharmacy ratings and reviews.</div>' : ''}
+      ${!user ? `<div class="alert alert-info">Please sign in to rate and review this pharmacy. <a class="btn btn-primary btn-sm" href="${reviewSignInUrl}">Sign In</a></div>` : ''}
+      <div class="pharmacy-rating-breakdown">
+        <div class="pharmacy-rating-breakdown-heading"><strong>${p.rating_count ? `${p.average_rating} ★` : 'No ratings yet'}</strong><span>${p.rating_count ? `Based on ${p.rating_count} reviews` : 'Be the first to review this pharmacy'}</span></div>
+        <div class="rating-distribution">
+          ${data.ratingDistribution.map(item => {
+            const percent = distributionTotal ? Math.round(item.count / distributionTotal * 100) : 0;
+            return `<div class="rating-distribution-row"><span>${item.rating} ${item.rating === 1 ? 'Star' : 'Stars'}</span><div class="rating-distribution-track"><span style="width:${percent}%"></span></div><span>${item.count}</span></div>`;
+          }).join('')}
+        </div>
+      </div>
+      <div class="review-toolbar"><label for="review-sort">Sort reviews</label><select id="review-sort"><option value="recent">Most Recent</option><option value="highest">Highest Rating</option><option value="lowest">Lowest Rating</option></select><label for="review-filter">Filter</label><select id="review-filter"><option value="all">All Ratings</option>${[5, 4, 3, 2, 1].map(value => `<option value="${value}">${starsFor(value)}</option>`).join('')}</select></div>
+      <div class="pharmacy-reviews">
+        <div id="review-list"></div>
+      </div>
+    </section>
+
+    <div class="card mt-16">
+      <div class="map-placeholder" style="height:260px;"><div id="profile-map"></div></div>
+    </div>
+
+    <div class="section-title">Currently Selling Products</div>
+    <div class="card">
+      <div class="field"><label>Search products at this pharmacy</label><input type="text" id="product-filter" placeholder="e.g. Paracetamol" /></div>
+      <div id="products"></div>
+    </div>
+  `;
+
+  const map = L.map('profile-map').setView([p.latitude, p.longitude], 15);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
+  L.marker([p.latitude, p.longitude]).addTo(map).bindPopup(`<b>${escapeHtml(p.name)}</b>`);
+  setTimeout(() => map.invalidateSize(), 50);
+
+  function relativeDate(value) {
+    const seconds = Math.round((new Date(value).getTime() - Date.now()) / 1000);
+    const units = [['year', 31536000], ['month', 2592000], ['week', 604800], ['day', 86400], ['hour', 3600], ['minute', 60]];
+    const [unit, size] = units.find(([, amount]) => Math.abs(seconds) >= amount) || ['second', 1];
+    return new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' }).format(Math.round(seconds / size), unit);
+  }
+
+  function renderReviews() {
+    const sort = document.getElementById('review-sort').value;
+    const filter = document.getElementById('review-filter').value;
+    const reviews = data.reviews.filter(review => filter === 'all' || review.rating === Number(filter));
+    reviews.sort((first, second) => sort === 'highest' ? second.rating - first.rating || new Date(second.updated_at) - new Date(first.updated_at)
+      : sort === 'lowest' ? first.rating - second.rating || new Date(second.updated_at) - new Date(first.updated_at)
+        : new Date(second.updated_at) - new Date(first.updated_at));
+    document.getElementById('review-list').innerHTML = reviews.length ? reviews.map(review => `
+      <article class="pharmacy-review-row">
+        <div class="review-author-avatar">${review.profile_image ? `<img src="${escapeHtml(review.profile_image)}" alt="" />` : escapeHtml((review.customer_username || review.customer_name || 'C').trim().charAt(0).toUpperCase())}</div>
+        <div class="review-content"><div class="flex justify-between items-center"><strong>@${escapeHtml(review.customer_username || review.customer_name)}</strong><span class="review-stars" aria-label="${review.rating} out of 5 stars">${starsFor(review.rating)}</span></div>
+          <div class="text-sm muted">${relativeDate(review.updated_at)}</div>${review.comment ? `<p>${escapeHtml(review.comment)}</p>` : ''}
+          ${review.is_mine ? '<span class="badge">Your review</span>' : ''}</div>
+      </article>`).join('') : data.reviews.length
+        ? '<div class="empty-state"><h3>No reviews match</h3><p>Try another rating filter.</p></div>'
+        : '<div class="empty-state"><h3>No reviews yet</h3><p>Be the first customer to share feedback.</p></div>';
+  }
+  document.getElementById('review-sort').addEventListener('change', renderReviews);
+  document.getElementById('review-filter').addEventListener('change', renderReviews);
+  renderReviews();
+  const reviewNotice = sessionStorage.getItem('pharmacy-review-notice');
+  if (reviewNotice) {
+    sessionStorage.removeItem('pharmacy-review-notice');
+    toast(reviewNotice);
+  }
+
+  if (canReview) {
+    let selectedRating = data.myRating?.rating || 0;
+    let hoverRating = 0;
+    const ratingButtons = [...document.querySelectorAll('.rating-star')];
+    const updateRatingPicker = () => ratingButtons.forEach(button => {
+      const active = Number(button.dataset.rating) <= (hoverRating || selectedRating);
+      button.classList.toggle('selected', active);
+      button.setAttribute('aria-pressed', String(Number(button.dataset.rating) === selectedRating));
+    });
+    const selectedLabel = document.getElementById('rating-selected-label');
+    const updateRatingLabel = () => { selectedLabel.textContent = ratingDescription(hoverRating || selectedRating); };
+    ratingButtons.forEach(button => button.addEventListener('click', () => {
+      selectedRating = Number(button.dataset.rating);
+      hoverRating = 0;
+      document.getElementById('submit-review').disabled = false;
+      document.getElementById('rating-error').hidden = true;
+      updateRatingPicker();
+      updateRatingLabel();
+    }));
+    ratingButtons.forEach(button => {
+      button.addEventListener('mouseenter', () => { hoverRating = Number(button.dataset.rating); updateRatingPicker(); updateRatingLabel(); });
+      button.addEventListener('focus', () => { hoverRating = Number(button.dataset.rating); updateRatingPicker(); updateRatingLabel(); });
+      button.addEventListener('mouseleave', () => { hoverRating = 0; updateRatingPicker(); updateRatingLabel(); });
+      button.addEventListener('blur', () => { hoverRating = 0; updateRatingPicker(); updateRatingLabel(); });
+    });
+    const reviewComment = document.getElementById('review-comment');
+    const commentCount = document.getElementById('comment-count');
+    reviewComment.addEventListener('input', () => {
+      commentCount.textContent = reviewComment.value.length;
+      if (reviewComment.value.trim()) document.getElementById('comment-error').hidden = true;
+    });
+    document.getElementById('submit-review').disabled = !selectedRating;
+    updateRatingPicker();
+    updateRatingLabel();
+    document.getElementById('edit-review')?.addEventListener('click', () => {
+      document.getElementById('rating-form').hidden = false;
+      document.getElementById('edit-review').disabled = true;
+    });
+    document.getElementById('cancel-edit')?.addEventListener('click', () => location.reload());
+    document.getElementById('submit-review').addEventListener('click', async () => {
+      if (!selectedRating) {
+        const error = document.getElementById('rating-error');
+        error.textContent = 'Please select a rating before submitting.';
+        error.hidden = false;
+        return;
+      }
+      const comment = reviewComment.value.trim();
+      if (!comment) {
+        const error = document.getElementById('comment-error');
+        error.textContent = 'Please write a comment about your experience.';
+        error.hidden = false;
+        reviewComment.focus();
+        return;
+      }
+      const confirmed = await appModal({
+        title: data.myRating ? 'Save review changes?' : 'Submit your review?',
+        message: `Rating: ${starsFor(selectedRating)}. Comment: ${comment}`,
+        confirmText: data.myRating ? 'Save Changes' : 'Submit Review',
+      });
+      if (!confirmed) return;
+      try {
+        await Api.post(`/api/customer/pharmacies/${id}/rating`, {
+          rating: selectedRating,
+          comment,
+        });
+        sessionStorage.setItem('pharmacy-review-notice', data.myRating
+          ? 'Your review has been updated.'
+          : 'Thank you! Your rating and review have been submitted successfully.');
+        location.reload();
+      } catch (err) { toast(err.message, 'error'); }
+    });
+    document.getElementById('delete-review')?.addEventListener('click', async () => {
+      const confirmed = await appModal({
+        title: 'Delete your review?',
+        message: 'Your rating and comment will be removed from this pharmacy.',
+        confirmText: 'Delete Review',
+        danger: true,
+      });
+      if (!confirmed) return;
+      try {
+        await Api.del(`/api/customer/pharmacies/${id}/rating`);
+        sessionStorage.setItem('pharmacy-review-notice', 'Your review has been deleted.');
+        location.reload();
+      } catch (err) { toast(err.message, 'error'); }
+    });
+  }
+
+  const productsBox = document.getElementById('products');
+  function renderProducts(filter) {
+    const f = (filter || '').toLowerCase();
+    const rows = data.products.filter(pr => pr.medicine_name.toLowerCase().includes(f));
+    if (!rows.length) {
+      productsBox.innerHTML = `<div class="empty-state"><div class="icon">&#128137;</div><h3>No products found</h3><p>This pharmacy hasn't deployed any matching products yet.</p></div>`;
+      return;
+    }
+    productsBox.innerHTML = `
+      <table>
+        <thead><tr><th>Medicine</th><th>Brand</th><th>Price</th><th>Stock</th><th></th></tr></thead>
+        <tbody>
+          ${rows.map(pr => `
+            <tr>
+              <td>
+                <div style="font-weight:600">${escapeHtml(pr.medicine_name)}</div>
+                <div class="text-sm muted">${escapeHtml(pr.category || '')}</div>
+              </td>
+              <td class="text-sm muted">${escapeHtml(pr.brand || '—')}</td>
+              <td>${money(pr.price)}</td>
+              <td>${stockBadge(pr.stock_quantity, 10)}</td>
+              <td>${user?.role === 'customer' ? `<button class="btn btn-primary btn-sm reserve-btn" data-id="${pr.inventory_id}" data-name="${escapeHtml(pr.medicine_name)}" data-max="${pr.stock_quantity}" data-price="${pr.price}" ${pr.stock_quantity === 0 ? 'disabled' : ''}>Reserve</button>` : `<a class="btn btn-outline btn-sm" href="${reviewSignInUrl}">Sign In</a>`}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+    document.querySelectorAll('.reserve-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const price = Number(btn.dataset.price);
+        const max = Number(btn.dataset.max);
+        const quantity = await appModal({
+          title: 'Reserve medicine',
+          message: `${btn.dataset.name} at ${p.name}`,
+          quantity: { value: 1, max, unitPrice: price, hint: `${max} units available · ${money(price)} each` },
+          confirmText: 'Place reservation',
+        });
+        if (quantity == null) return;
+        try {
+          await Api.post('/api/customer/reservations', { inventory_id: btn.dataset.id, quantity });
+          toast('Reservation placed! Check "My Reservations" for status.');
+        } catch (err) { toast(err.message, 'error'); }
+      });
+    });
+  }
+  renderProducts('');
+  let t;
+  document.getElementById('product-filter').addEventListener('input', (e) => {
+    clearTimeout(t);
+    t = setTimeout(() => renderProducts(e.target.value), 200);
+  });
+})();
+</script>
+</body>
+</html>

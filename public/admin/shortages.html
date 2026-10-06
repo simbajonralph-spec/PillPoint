@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Shortages — PillPoint</title>
+<link rel="icon" type="image/svg+xml" href="/img/logo-mark.svg" />
+<link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+<script src="/js/api.js"></script>
+<script src="/js/layout.js"></script>
+<script>
+(async function () {
+  const user = await guardPage(['admin'], 'Shortage Monitoring', 'Medicines with zero stock across every pharmacy');
+  if (!user) return;
+  const content = document.getElementById('page-content');
+  content.innerHTML = skeletonLoader('table', 4);
+  try {
+    const data = await Api.get('/api/admin/shortages');
+    if (!data.shortages.length) {
+      content.innerHTML = `<div class="empty-state"><div class="icon">&#9989;</div><h3>No system-wide shortages</h3><p>Every tracked medicine has stock somewhere.</p></div>`;
+      return;
+    }
+    content.innerHTML = `
+      <div class="card">
+        <table>
+          <thead><tr><th>Medicine</th><th>Category</th><th>Pharmacies Carrying</th><th>Total Stock</th></tr></thead>
+          <tbody>
+            ${data.shortages.map(s => `
+              <tr>
+                <td style="font-weight:600">${escapeHtml(s.name)}</td>
+                <td class="text-sm muted">${escapeHtml(s.category || '—')}</td>
+                <td>${s.pharmacies_carrying}</td>
+                <td><span class="badge badge-out">0 in stock</span></td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  } catch (err) {
+    content.innerHTML = `<div class="alert alert-error">${escapeHtml(err.message)}</div>`;
+  }
+})();
+</script>
+</body>
+</html>

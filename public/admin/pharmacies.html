@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Manage Pharmacies — PillPoint</title>
+<link rel="icon" type="image/svg+xml" href="/img/logo-mark.svg" />
+<link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+<script src="/js/api.js"></script>
+<script src="/js/layout.js"></script>
+<script>
+(async function () {
+  const user = await guardPage(['admin'], 'Manage Pharmacies', 'Verify, search, or notify registered pharmacies');
+  if (!user) return;
+  const content = document.getElementById('page-content');
+  content.innerHTML = `
+    <div class="filters-row">
+      <div class="field grow">
+        <label>Search</label>
+        <input type="text" id="search-input" placeholder="Search by name, address, or phone" />
+      </div>
+    </div>
+    <div id="list" class="table-wrap">${skeletonLoader('table', 4)}</div>
+  `;
+  const list = document.getElementById('list');
+  const searchInput = document.getElementById('search-input');
+  let searchTimer;
+
+  function notifyFormHtml(p) {
+    return `
+      <div class="notify-form" id="notify-form-${p.id}">
+        <div class="grid grid-2">
+          <div class="field"><label>Title</label><input type="text" class="notify-title" id="notify-title-${p.id}" placeholder="e.g. Compliance reminder" /></div>
+        </div>
+        <div class="field"><label>Message</label><textarea class="notify-message" id="notify-message-${p.id}" rows="3" placeholder="Message to send to this pharmacy's staff"></textarea></div>
+        <button class="btn btn-primary btn-sm send-notify-btn" data-id="${p.id}">Send Notification</button>
+        <button class="btn btn-outline btn-sm cancel-notify-btn" data-id="${p.id}">Cancel</button>
+      </div>
+    `;
+  }
+
+  async function load(q) {
+    try {
+      const params = new URLSearchParams();
+      if (q) params.set('q', q);
+      const data = await Api.get('/api/admin/pharmacies?' + params.toString());
+      if (!data.pharmacies.length) {
+        list.innerHTML = `<div class="empty-state"><h3>No pharmacies found</h3><p>Try a different search term.</p></div>`;
+        return;
+      }
+      list.innerHTML = `
+        <div class="card" style="padding:0;">
+          <table>
+            <thead><tr><th>Pharmacy</th><th>Address</th><th>Phone</th><th>Permit</th><th>Reservations</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+              ${data.pharmacies.map(p => `
+                <tr>
+                  <td style="font-weight:600">${escapeHtml(p.name)}</td>
+                  <td class="text-sm muted">${escapeHtml(p.address)}</td>
+                  <td class="text-sm muted">${escapeHtml(p.phone || '—')}</td>
+                  <td>${p.has_business_permit ? `<a class="btn btn-outline btn-sm" href="/api/admin/pharmacies/${p.id}/permit" target="_blank" rel="noopener">View</a>` : '<span class="muted text-sm">Missing</span>'}</td>
+                  <td>${p.reservation_count}</td>
+                  <td>${p.verification_status === 'VERIFIED' ? '<span class="badge badge-verified">Verified</span>' : p.verification_status === 'REJECTED' ? '<span class="badge badge-unverified">Rejected</span>' : p.verification_status === 'SUSPENDED' ? '<span class="badge badge-warning">Suspended</span>' : '<span class="badge badge-unverified">Pending</span>'}</td>
+                  <td style="white-space:nowrap;">
+                    ${p.verification_status === 'VERIFIED'
+                      ? `<button class="btn btn-outline btn-sm act-btn" data-id="${p.id}" data-action="suspend">Suspend</button>`
+                      : p.verification_status === 'SUSPENDED'
+                        ? `<button class="btn btn-primary btn-sm act-btn" data-id="${p.id}" data-action="reactivate">Reactivate</button>`
+                        : `<button class="btn btn-primary btn-sm act-btn" data-id="${p.id}" data-action="verify">Verify</button>`}
+                    ${p.verification_status !== 'REJECTED' ? `<button class="btn btn-outline btn-sm act-btn" data-id="${p.id}" data-action="reject">Reject</button>` : ''}
+                    <button class="btn btn-outline btn-sm toggle-reviews-btn" data-id="${p.id}">Reviews (${p.rating_count})</button>
+                    <button class="btn btn-outline btn-sm toggle-notify-btn" data-id="${p.id}">Notify</button>
+                  </td>
+                </tr>
+                <tr><td colspan="7" style="padding:0;"><div class="admin-review-panel" id="reviews-${p.id}" hidden>
+                  <strong>★ ${p.average_rating || '—'} average · ${p.rating_count} review${p.rating_count === 1 ? '' : 's'}</strong>
+                  ${p.reviews.length ? p.reviews.map(review => `<article class="pharmacy-review-row"><div class="flex justify-between items-center"><strong>@${escapeHtml(review.customer_username || review.customer_name)}</strong><span class="review-stars">${'★'.repeat(review.rating)}${'☆'.repeat(5 - review.rating)}</span></div><div class="text-sm muted">${new Date(review.updated_at).toLocaleDateString()}</div>${review.comment ? `<p>${escapeHtml(review.comment)}</p>` : ''}</article>`).join('') : '<p class="text-sm muted mt-8">No customer reviews yet.</p>'}
+                  <p class="text-sm muted mt-8">Customer ratings and comments are read-only.</p>
+                </div></td></tr>
+                <tr><td colspan="7" style="padding:0;">${notifyFormHtml(p)}</td></tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+      document.querySelectorAll('.act-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          try {
+            await Api.post(`/api/admin/pharmacies/${btn.dataset.id}/${btn.dataset.action}`);
+            toast('Pharmacy status updated.');
+            load(searchInput.value.trim());
+          } catch (err) { toast(err.message, 'error'); }
+        });
+      });
+      document.querySelectorAll('.toggle-notify-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.getElementById(`notify-form-${btn.dataset.id}`).classList.toggle('open');
+        });
+      });
+      document.querySelectorAll('.toggle-reviews-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const panel = document.getElementById(`reviews-${btn.dataset.id}`);
+          panel.hidden = !panel.hidden;
+        });
+      });
+      document.querySelectorAll('.cancel-notify-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.getElementById(`notify-form-${btn.dataset.id}`).classList.remove('open');
+        });
+      });
+      document.querySelectorAll('.send-notify-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = btn.dataset.id;
+          const title = document.getElementById(`notify-title-${id}`).value.trim();
+          const message = document.getElementById(`notify-message-${id}`).value.trim();
+          if (!title || !message) { toast('Title and message are required.', 'error'); return; }
+          try {
+            const res = await Api.post(`/api/admin/pharmacies/${id}/notify`, { title, message });
+            toast(`Notification sent to ${res.notified} staff account(s).`);
+            document.getElementById(`notify-form-${id}`).classList.remove('open');
+          } catch (err) { toast(err.message, 'error'); }
+        });
+      });
+    } catch (err) {
+      list.innerHTML = `<div class="alert alert-error">${escapeHtml(err.message)}</div>`;
+    }
+  }
+
+  searchInput.addEventListener('input', () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => load(searchInput.value.trim()), 250);
+  });
+
+  load();
+})();
+</script>
+</body>
+</html>

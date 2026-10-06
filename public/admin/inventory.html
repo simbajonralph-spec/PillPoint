@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Inventory Monitoring — PillPoint</title>
+<link rel="icon" type="image/svg+xml" href="/img/logo-mark.svg" />
+<link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+<script src="/js/api.js"></script>
+<script src="/js/layout.js"></script>
+<script>
+(async function () {
+  const user = await guardPage(['admin'], 'Inventory Monitoring', 'System-wide medicine and stock visibility');
+  if (!user) return;
+  const content = document.getElementById('page-content');
+  content.innerHTML = skeletonLoader('cards', 4);
+  try {
+    const data = await Api.get('/api/admin/inventory');
+    const filters = data.filters || {};
+    const rows = data.inventory || [];
+    const statCards = `
+      <div class="grid grid-4">
+        <div class="card stat-card"><div class="stat-icon">&#128176;</div><div class="stat-label">Total Products</div><div class="stat-value">${data.counts.totalProducts}</div></div>
+        <div class="card stat-card"><div class="stat-icon">&#9888;</div><div class="stat-label">Low Stock</div><div class="stat-value">${data.counts.lowStock}</div></div>
+        <div class="card stat-card"><div class="stat-icon">&#128308;</div><div class="stat-label">Critical Stock</div><div class="stat-value">${data.counts.criticalStock}</div></div>
+        <div class="card stat-card"><div class="stat-icon">&#128722;</div><div class="stat-label">Out of Stock</div><div class="stat-value">${data.counts.outOfStock}</div></div>
+      </div>
+    `;
+    const table = rows.length ? `
+      <div class="card" style="padding:0; margin-top:24px;">
+        <table>
+          <thead>
+            <tr>
+              <th>Pharmacy</th>
+              <th>Medicine</th>
+              <th>Category</th>
+              <th>Current Stock</th>
+              <th>Min Stock</th>
+              <th>Status</th>
+              <th>Expiration</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map(row => `
+              <tr>
+                <td>${escapeHtml(row.pharmacy_name)}</td>
+                <td>${escapeHtml(row.medicine_name)}</td>
+                <td class="text-sm muted">${escapeHtml(row.category || '—')}</td>
+                <td>${row.current_stock}</td>
+                <td>${row.minimum_stock}</td>
+                <td>${row.stock_status === 'OUT_OF_STOCK' ? '<span class="badge badge-out">Out of Stock</span>' : row.stock_status === 'LOW_STOCK' ? '<span class="badge badge-low">Low Stock</span>' : row.stock_status === 'CRITICAL' ? '<span class="badge badge-warning">Critical</span>' : '<span class="badge badge-available">Healthy</span>'}</td>
+                <td class="text-sm muted">${row.expiration_date ? new Date(row.expiration_date).toLocaleDateString() : '—'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    ` : '<div class="empty-state"><h3>No inventory data</h3><p>No verified pharmacies currently have tracked stock.</p></div>';
+    content.innerHTML = `
+      ${statCards}
+      <div class="card" style="margin-top:24px;">
+        <div class="filters-row" style="margin-bottom: 12px;">
+          <div class="field grow">
+            <label>Search</label>
+            <input id="inventory-search" value="${escapeHtml(filters.q || '')}" placeholder="Search medicine or pharmacy" />
+          </div>
+          <div class="field">
+            <label>Status</label>
+            <select id="inventory-status">
+              <option value="ALL" ${filters.statusFilter === 'ALL' || !filters.statusFilter ? 'selected' : ''}>All</option>
+              <option value="LOW_STOCK" ${filters.statusFilter === 'LOW_STOCK' ? 'selected' : ''}>Low Stock</option>
+              <option value="CRITICAL" ${filters.statusFilter === 'CRITICAL' ? 'selected' : ''}>Critical</option>
+              <option value="OUT_OF_STOCK" ${filters.statusFilter === 'OUT_OF_STOCK' ? 'selected' : ''}>Out of Stock</option>
+            </select>
+          </div>
+        </div>
+        <div id="inventory-table"></div>
+      </div>
+    `;
+    const inventoryTable = document.getElementById('inventory-table');
+    inventoryTable.innerHTML = table;
+    const searchInput = document.getElementById('inventory-search');
+    const statusSelect = document.getElementById('inventory-status');
+    let timer;
+    const refresh = async () => {
+      const q = searchInput.value.trim();
+      const status = statusSelect.value;
+      const res = await Api.get(`/api/admin/inventory?q=${encodeURIComponent(q)}&status=${encodeURIComponent(status)}`);
+      const rows = res.inventory || [];
+      inventoryTable.innerHTML = rows.length ? `
+        <table>
+          <thead>
+            <tr>
+              <th>Pharmacy</th>
+              <th>Medicine</th>
+              <th>Category</th>
+              <th>Current Stock</th>
+              <th>Min Stock</th>
+              <th>Status</th>
+              <th>Expiration</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map(row => `
+              <tr>
+                <td>${escapeHtml(row.pharmacy_name)}</td>
+                <td>${escapeHtml(row.medicine_name)}</td>
+                <td class="text-sm muted">${escapeHtml(row.category || '—')}</td>
+                <td>${row.current_stock}</td>
+                <td>${row.minimum_stock}</td>
+                <td>${row.stock_status === 'OUT_OF_STOCK' ? '<span class="badge badge-out">Out of Stock</span>' : row.stock_status === 'LOW_STOCK' ? '<span class="badge badge-low">Low Stock</span>' : row.stock_status === 'CRITICAL' ? '<span class="badge badge-warning">Critical</span>' : '<span class="badge badge-available">Healthy</span>'}</td>
+                <td class="text-sm muted">${row.expiration_date ? new Date(row.expiration_date).toLocaleDateString() : '—'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      ` : '<div class="empty-state"><h3>No matching inventory</h3><p>Try a different search or stock-status filter.</p></div>';
+    };
+    searchInput.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(refresh, 250); });
+    statusSelect.addEventListener('change', refresh);
+  } catch (err) {
+    content.innerHTML = `<div class="alert alert-error">${escapeHtml(err.message)}</div>`;
+  }
+})();
+</script>
+</body>
+</html>

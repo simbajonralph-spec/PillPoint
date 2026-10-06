@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Admin Dashboard — PillPoint</title>
+<link rel="icon" type="image/svg+xml" href="/img/logo-mark.svg" />
+<link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+<script src="/js/api.js"></script>
+<script src="/js/layout.js"></script>
+<script>
+(async function () {
+  const user = await guardPage(['admin'], 'Admin Dashboard', 'System-wide overview');
+  if (!user) return;
+  const content = document.getElementById('page-content');
+  content.innerHTML = skeletonLoader('cards', 4);
+  try {
+    const [data, paiData] = await Promise.all([
+      Api.get('/api/admin/dashboard'),
+      Api.get('/api/pai/admin-insights').catch(error => ({
+        unavailable: true,
+        error: error.message || 'P.A.I. admin insights are currently unavailable.',
+      }))
+    ]);
+    content.innerHTML = `
+      <div class="grid grid-4">
+        <div class="card stat-card"><div class="stat-icon">&#127974;</div><div class="stat-label">Pharmacies</div><div class="stat-value">${data.totals.pharmacies}</div></div>
+        <div class="card stat-card"><div class="stat-icon">&#9989;</div><div class="stat-label">Verified Pharmacies</div><div class="stat-value">${data.totals.verifiedPharmacies}</div></div>
+        <div class="card stat-card"><div class="stat-icon">&#128100;</div><div class="stat-label">Customers</div><div class="stat-value">${data.totals.customers}</div></div>
+        <div class="card stat-card"><div class="stat-icon">&#128203;</div><div class="stat-label">Total Reservations</div><div class="stat-value">${data.totals.reservations}</div></div>
+      </div>
+      <div class="grid grid-4 mt-24">
+        <div class="card stat-card"><div class="stat-icon">&#9203;</div><div class="stat-label">Pending Reservations</div><div class="stat-value">${data.stats.pendingReservations}</div></div>
+        <div class="card stat-card"><div class="stat-icon">&#128683;</div><div class="stat-label">Pending Pharmacies</div><div class="stat-value">${data.totals.pendingPharmacies}</div></div>
+        <div class="card stat-card"><div class="stat-icon">&#9888;</div><div class="stat-label">Low Stock Alerts</div><div class="stat-value">${data.stats.lowStockAlerts}</div></div>
+        <div class="card stat-card"><div class="stat-icon">&#128176;</div><div class="stat-label">System Inventory Value</div><div class="stat-value">${money(data.stats.totalInventoryValue)}</div></div>
+      </div>
+
+      <div class="card mt-24">
+        <div class="card-title">P.A.I. Admin Insights</div>
+        <div class="text-sm muted">Database-backed signals using existing searches, reservations, inventory, transactions, batches and pharmacy records. Every finding includes its evidence and reasoning.</div>
+        ${paiData.unavailable
+          ? `<div class="alert alert-warning mt-12">${escapeHtml(paiData.error)}</div>`
+          : `
+            <div class="text-sm muted mt-8">Reporting period: ${escapeHtml(paiData.reporting_period || 'Last 30 days')} · Generated ${escapeHtml(new Date(paiData.generated_at).toLocaleString())}</div>
+            <div class="mt-12 flex gap-12">
+              <span class="badge badge-verified">Search events: ${Number(paiData.summary?.search_events_30_days || 0)}</span>
+              <span class="badge badge-warning">Low-stock listings: ${Number(paiData.summary?.low_stock_alerts || 0)}</span>
+              <span class="badge badge-unverified">Demand/supply signals: ${Number(paiData.summary?.demand_supply_gaps || 0)}</span>
+              <span class="badge badge-low">Review signals: ${Number(paiData.summary?.anomalies_requiring_review || 0) + Number(paiData.summary?.price_anomalies || 0)}</span>
+            </div>
+            <div class="grid mt-16" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:16px;">
+              ${(paiData.system_insights || []).length
+                ? paiData.system_insights.map(item => `
+                  <article class="card" style="padding:14px;">
+                    <strong>${escapeHtml(item.insight)}</strong>
+                    <div class="text-sm mt-8"><strong>Evidence:</strong> ${escapeHtml(item.evidence)}</div>
+                    <div class="text-sm mt-8"><strong>Reason:</strong> ${escapeHtml(item.reason)}</div>
+                    <div class="text-sm muted mt-8"><strong>Recommendation:</strong> ${escapeHtml(item.recommendation)}</div>
+                  </article>`).join('')
+                : `<div class="empty-state"><p>No system insight met the current review criteria.</p><p class="text-sm">No qualifying signals are not a guarantee that issues are absent.</p></div>`}
+            </div>
+            <div class="grid mt-16" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:16px;">
+              <article class="card" style="padding:14px;">
+                <strong>Demand / supply within PillPoint</strong>
+                ${(paiData.demand_supply_gaps || []).length
+                  ? `<ul>${paiData.demand_supply_gaps.slice(0,5).map(item => `<li><strong>${escapeHtml(item.medicine_name)}</strong><br><span class="text-sm">${escapeHtml(item.evidence)}</span><br><span class="text-sm muted">Reason: ${escapeHtml(item.reason)}</span></li>`).join('')}</ul>`
+                  : `<p class="text-sm muted">No medicine met both the selected-period demand and limited-listing criteria.</p>`}
+              </article>
+              <article class="card" style="padding:14px;">
+                <strong>Pharmacy participation</strong>
+                <p class="text-sm mt-8">${Number(paiData.pharmacy_participation?.summary?.verified || 0)} verified · ${Number(paiData.pharmacy_participation?.summary?.stale_inventory || 0)} stale inventory · ${Number(paiData.pharmacy_participation?.summary?.low_activity || 0)} low activity.</p>
+                ${(paiData.pharmacy_participation?.pharmacies || []).filter(item => item.inactive || item.low_activity).slice(0,5).map(item => `<div class="text-sm mt-8"><strong>${escapeHtml(item.pharmacy_name)}</strong><br>Evidence: ${escapeHtml(item.evidence)}<br>Reason: ${escapeHtml(item.reason)}</div>`).join('') || `<p class="text-sm muted">No pharmacy participation flags met the current criteria.</p>`}
+              </article>
+              <article class="card" style="padding:14px;">
+                <strong>Activity anomalies requiring review</strong>
+                ${(paiData.anomalies || []).length
+                  ? `<ul>${paiData.anomalies.slice(0,5).map(item => `<li><strong>${escapeHtml(item.subject)}</strong><br><span class="text-sm">Evidence: ${escapeHtml(item.evidence)}</span><br><span class="text-sm muted">Reason: ${escapeHtml(item.reason)}</span></li>`).join('')}</ul>`
+                  : `<p class="text-sm muted">No unusual activity met the review thresholds.</p>`}
+              </article>
+              <article class="card" style="padding:14px;">
+                <strong>Price comparisons requiring review</strong>
+                ${(paiData.price_anomalies || []).length
+                  ? `<ul>${paiData.price_anomalies.slice(0,5).map(item => `<li><strong>${escapeHtml(item.medicine_name)} · ${escapeHtml(item.pharmacy_name)}</strong><br><span class="text-sm">Evidence: ${escapeHtml(item.evidence)}</span><br><span class="text-sm muted">Reason: ${escapeHtml(item.reason)}</span></li>`).join('')}</ul>`
+                  : `<p class="text-sm muted">No price met the same-medicine comparison threshold.</p>`}
+              </article>
+            </div>
+            <div class="mt-16"><button type="button" id="pai-admin-report-btn" class="btn btn-primary">Generate P.A.I. System Report</button></div>
+            <div id="pai-admin-report" class="mt-16" aria-live="polite"></div>
+          `}
+      </div>
+
+      <div class="grid mt-24" style="grid-template-columns: 1fr 1.3fr; gap:18px;">
+        <div class="card">
+          <div class="card-title">Reservations by Status</div>
+          ${data.reservationsByStatus.length
+            ? pieChart3D(data.reservationsByStatus.map(s => ({ label: s.status, value: s.count })))
+            : `<div class="empty-state" style="padding:24px;"><p class="text-sm">No reservations yet.</p></div>`}
+        </div>
+        <div class="card">
+          <div class="card-title">Top Pharmacies by Reservations</div>
+          ${data.topPharmacies.length ? `
+            <table>
+              <thead><tr><th>Pharmacy</th><th>Reservations</th></tr></thead>
+              <tbody>${data.topPharmacies.map(p => `<tr><td>${escapeHtml(p.name)}</td><td>${p.reservation_count}</td></tr>`).join('')}</tbody>
+            </table>
+          ` : `<div class="empty-state" style="padding:24px;"><p class="text-sm">No data yet.</p></div>`}
+        </div>
+      </div>
+
+      <div class="text-sm muted mt-16">New customers this week: <strong>${data.stats.newCustomersThisWeek}</strong></div>
+
+      ${data.shortageCount > 0 ? `<div class="alert alert-error mt-24">${data.shortageCount} medicine${data.shortageCount > 1 ? 's are' : ' is'} currently out of stock system-wide. <a href="/admin/shortages.html" style="font-weight:700;">View shortages &rarr;</a></div>` : ''}
+      <div class="flex gap-12 mt-24">
+        <a href="/admin/pharmacies.html" class="btn btn-primary">Manage Pharmacies</a>
+        <a href="/admin/shortages.html" class="btn btn-outline">View Shortages</a>
+      </div>
+    `;
+    const reportButton = document.getElementById('pai-admin-report-btn');
+    if (reportButton) reportButton.addEventListener('click', async () => {
+      const reportRegion = document.getElementById('pai-admin-report');
+      reportButton.disabled = true;
+      reportRegion.innerHTML = '<div class="alert alert-info">Generating a report from current PillPoint records...</div>';
+      try {
+        const report = await Api.post('/api/pai/admin-report', {});
+        const reportSections = report.sections;
+        reportRegion.innerHTML = `
+          <section class="card">
+            <div class="card-title">${escapeHtml(report.title)}</div>
+            <p class="text-sm muted">${escapeHtml(report.reporting_period)} · Generated ${escapeHtml(new Date(report.generated_at).toLocaleString())}</p>
+            <div class="grid mt-16" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:16px;">
+              ${Object.entries(reportSections).map(([key, section]) => `
+                <article class="card" style="padding:14px;">
+                  <strong>${escapeHtml(key.replaceAll('_', ' '))}</strong>
+                  <div class="text-sm mt-8">${escapeHtml(section.evidence || (Array.isArray(section) ? `${section.length} recorded items` : ''))}</div>
+                  ${section.reason ? `<div class="text-sm mt-8"><strong>Reason:</strong> ${escapeHtml(section.reason)}</div>` : ''}
+                  ${section.top_searched?.length ? `<ul>${section.top_searched.slice(0,5).map(item => `<li>${escapeHtml(item.medicine_name)} — ${Number(item.search_count)} searches</li>`).join('')}</ul>` : ''}
+                  ${section.demand_supply_gaps?.length ? `<ul>${section.demand_supply_gaps.slice(0,5).map(item => `<li>${escapeHtml(item.medicine_name)}: ${escapeHtml(item.evidence)} <span class="muted">Reason: ${escapeHtml(item.reason)}</span></li>`).join('')}</ul>` : ''}
+                  ${section.pharmacies?.length ? `<ul>${section.pharmacies.filter(item => item.inactive || item.low_activity).slice(0,5).map(item => `<li>${escapeHtml(item.pharmacy_name)}: ${escapeHtml(item.evidence)} <span class="muted">Reason: ${escapeHtml(item.reason)}</span></li>`).join('')}</ul>` : ''}
+                  ${section.anomalies?.length ? `<ul>${section.anomalies.slice(0,5).map(item => `<li>${escapeHtml(item.medicine_name)} at ${escapeHtml(item.pharmacy_name)}: ${escapeHtml(item.evidence)} <span class="muted">Reason: ${escapeHtml(item.reason)}</span></li>`).join('')}</ul>` : ''}
+                  ${section.important_system_insights?.length ? `<ul>${section.important_system_insights.slice(0,5).map(item => `<li>${escapeHtml(item.insight)}<br>${escapeHtml(item.evidence)}<br><span class="muted">Reason: ${escapeHtml(item.reason)}</span></li>`).join('')}</ul>` : ''}
+                  ${section.recommended_administrative_actions?.length ? `<ul>${section.recommended_administrative_actions.map(item => `<li>${escapeHtml(item.action)}<br>${escapeHtml(item.evidence)}<br><span class="muted">Reason: ${escapeHtml(item.reason)}</span></li>`).join('')}</ul>` : ''}
+                </article>`).join('')}
+            </div>
+            <p class="text-sm muted mt-12">${escapeHtml(report.disclaimer)}</p>
+          </section>`;
+      } catch (error) {
+        reportRegion.innerHTML = `<div class="alert alert-error">${escapeHtml(error.message || 'Report generation failed.')}</div>`;
+      } finally {
+        reportButton.disabled = false;
+      }
+    });
+  } catch (err) {
+    content.innerHTML = `<div class="alert alert-error">${escapeHtml(err.message)}</div>`;
+  }
+})();
+</script>
+</body>
+</html>

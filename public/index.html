@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PillPoint — Find & Reserve Medicine Nearby</title>
+<link rel="icon" type="image/svg+xml" href="/img/logo-mark.svg" />
+<link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+
+<nav class="landing-nav">
+  <div class="brand"><img src="/img/logo-mark.svg" alt="PillPoint" width="32" height="32" style="border-radius:8px;" />PillPoint</div>
+  <div class="nav-links">
+    <a href="/login.html" class="btn btn-outline" style="color:#fff;border-color:rgba(255,255,255,.25)">Login</a>
+    <a href="/register.html" class="btn btn-primary">Register</a>
+  </div>
+</nav>
+
+<section class="hero">
+  <h1>Find the medicine you need at the pharmacy nearest you</h1>
+  <p>PillPoint helps you search real-time stock, compare prices across pharmacies, and reserve medicine before you go — all from one place.</p>
+  <form class="search-cta" onsubmit="event.preventDefault(); window.location.href='/register.html'">
+    <input type="text" placeholder="Search for a medicine, e.g. Paracetamol" />
+    <button class="btn btn-primary" type="submit">Search</button>
+  </form>
+  <div class="hero-actions mt-24">
+    <a href="/register.html" class="btn btn-primary">Get Started</a>
+    <a href="/login.html" class="btn btn-outline" style="color:#fff;border-color:rgba(255,255,255,.25)">I already have an account</a>
+  </div>
+</section>
+
+<section class="features">
+  <h2>Everything you need, in one app</h2>
+  <p>A modern way to locate medicine and manage reservations</p>
+  <div class="grid grid-3">
+    <div class="card feature-card reveal">
+      <div class="stat-icon">&#128205;</div>
+      <h3>Nearby Pharmacies</h3>
+      <p>See pharmacies around you on a map, sorted by distance, so you always know where to go.</p>
+    </div>
+    <div class="card feature-card reveal">
+      <div class="stat-icon">&#128203;</div>
+      <h3>Reserve Ahead</h3>
+      <p>Reserve medicine online and pick it up in person — no more wasted trips to a pharmacy that's out of stock.</p>
+    </div>
+    <div class="card feature-card reveal">
+      <div class="stat-icon">&#9888;</div>
+      <h3>Shortage Monitoring</h3>
+      <p>We flag medicines that are out of stock across the system, so shortages are easy to see.</p>
+    </div>
+    <div class="card feature-card reveal">
+      <div class="stat-icon">&#127974;</div>
+      <h3>Verified Pharmacies</h3>
+      <p>Pharmacies are verified by our admin team so you know you're reserving from a legitimate source.</p>
+    </div>
+    <div class="card feature-card reveal">
+      <div class="stat-icon">&#128276;</div>
+      <h3>Live Notifications</h3>
+      <p>Get notified the moment your reservation is confirmed, ready, or needs your attention.</p>
+    </div>
+  </div>
+</section>
+
+<section class="cta-band">
+  <h2>Are you a pharmacy?</h2>
+  <p class="mt-8">Manage your inventory and reservations digitally with PillPoint.</p>
+  <a href="/register.html" class="btn btn-primary mt-16" style="display:inline-flex">Partner with PillPoint</a>
+</section>
+
+<footer class="site-footer">&copy; 2026 PillPoint. All rights reserved.</footer>
+
+<script src="/js/api.js"></script>
+<script>
+// Scroll-based reveal: fade + lift feature cards in as they enter the viewport.
+const revealEls = document.querySelectorAll('.reveal');
+if ('IntersectionObserver' in window && revealEls.length) {
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('revealed');
+        io.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.15 });
+  revealEls.forEach(el => io.observe(el));
+} else {
+  revealEls.forEach(el => el.classList.add('revealed'));
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,25 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="PillPoint logo">
+  <defs>
+    <linearGradient id="pp-navy" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#16233A"/>
+      <stop offset="100%" stop-color="#0B1220"/>
+    </linearGradient>
+    <linearGradient id="pp-teal" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2DD4BF"/>
+      <stop offset="100%" stop-color="#0D9488"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="1" y="1" width="62" height="62" rx="16" fill="url(#pp-navy)"/>
+
+  <!-- capsule / pill, rotated 45deg, half navy-outline half teal -->
+  <g transform="translate(32,32) rotate(-45)">
+    <rect x="-17" y="-8.5" width="34" height="17" rx="8.5" fill="#F8FAFC"/>
+    <path d="M -17 -8.5 H 0 V 8.5 H -17 A 8.5 8.5 0 0 1 -17 -8.5 Z" fill="url(#pp-teal)"/>
+    <line x1="0" y1="-8.5" x2="0" y2="8.5" stroke="#0B1220" stroke-width="1.4" opacity="0.15"/>
+  </g>
+
+  <!-- location pin dot accent, bottom right -->
+  <circle cx="46.5" cy="46.5" r="6.5" fill="url(#pp-teal)" stroke="#0B1220" stroke-width="2"/>
+  <circle cx="46.5" cy="46.5" r="2" fill="#06201c"/>
+</svg>

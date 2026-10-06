@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Login — PillPoint</title>
+<link rel="icon" type="image/svg+xml" href="/img/logo-mark.svg" />
+<link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+<div class="auth-wrap">
+  <div class="auth-card card card-elevated">
+    <div class="brand">
+      <img src="/img/logo-mark.svg" alt="PillPoint" width="34" height="34" style="border-radius:9px;" />
+      <div style="font-weight:800;font-size:19px;color:var(--navy)">PillPoint</div>
+    </div>
+
+    <div class="auth-foot" style="margin-top:0;margin-bottom:16px;">
+      <span class="badge" style="background:#ECFDF5;color:#0F766E;"><span class="icon">&#128137;</span> Pharmacy &amp; Medicine Reservation Platform</span>
+    </div>
+
+    <div id="alert-box"></div>
+
+    <form id="login-form">
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="email" required autocomplete="username" />
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <div class="password-field">
+          <input type="password" id="password" required autocomplete="current-password" />
+          <button type="button" class="password-toggle" id="password-toggle" aria-label="Show password">&#128065;</button>
+        </div>
+      </div>
+      <div class="field flex items-center justify-between" style="margin-bottom:20px;">
+        <label class="checkbox-label">
+          <input type="checkbox" id="remember" />
+          <span>Remember me</span>
+        </label>
+      </div>
+      <button class="btn btn-primary btn-block" type="submit">Sign In</button>
+    </form>
+
+    <div class="auth-foot">
+      Don't have an account? <a href="/register.html" style="color:var(--teal-dark);font-weight:600">Register</a>
+    </div>
+  </div>
+</div>
+
+<script src="/js/api.js"></script>
+<script>
+const passwordInput = document.getElementById('password');
+const passwordToggle = document.getElementById('password-toggle');
+passwordToggle.addEventListener('click', () => {
+  const isHidden = passwordInput.type === 'password';
+  passwordInput.type = isHidden ? 'text' : 'password';
+  passwordToggle.innerHTML = isHidden ? '&#128064;' : '&#128065;';
+  passwordToggle.setAttribute('aria-label', isHidden ? 'Hide password' : 'Show password');
+});
+
+document.getElementById('login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email = document.getElementById('email').value.trim();
+  const password = passwordInput.value;
+  const remember = document.getElementById('remember').checked;
+  const alertBox = document.getElementById('alert-box');
+  alertBox.innerHTML = '';
+  try {
+    const { user } = await Api.post('/api/auth/login', { email, password, remember });
+    const requestedNext = new URLSearchParams(location.search).get('next');
+    const nextPath = requestedNext && requestedNext.startsWith('/') && !requestedNext.startsWith('//') ? requestedNext : null;
+    if (user.role === 'customer' && nextPath) { window.location.href = nextPath; return; }
+    // Real authorization comes from the account's role in the database,
+    // not from whichever tab was clicked.
+    if (user.role === 'pharmacy_staff') window.location.href = '/pharmacy/dashboard.html';
+    else if (user.role === 'admin') window.location.href = '/admin/dashboard.html';
+    else window.location.href = '/dashboard.html';
+  } catch (err) {
+    alertBox.innerHTML = `<div class="alert alert-error">${escapeHtml(err.message)}</div>`;
+  }
+});
+
+// If already logged in, skip straight to the dashboard
+Api.get('/api/auth/me').then(({ user }) => {
+  if (user) {
+    const requestedNext = new URLSearchParams(location.search).get('next');
+    const nextPath = requestedNext && requestedNext.startsWith('/') && !requestedNext.startsWith('//') ? requestedNext : null;
+    if (user.role === 'customer' && nextPath) window.location.href = nextPath;
+    else if (user.role === 'pharmacy_staff') window.location.href = '/pharmacy/dashboard.html';
+    else if (user.role === 'admin') window.location.href = '/admin/dashboard.html';
+    else window.location.href = '/dashboard.html';
+  }
+});
+</script>
+</body>
+</html>

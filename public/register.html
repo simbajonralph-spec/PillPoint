@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Register — PillPoint</title>
+<link rel="icon" type="image/svg+xml" href="/img/logo-mark.svg" />
+<link rel="stylesheet" href="/css/style.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+</head>
+<body>
+<div class="auth-wrap">
+  <div class="auth-card card card-elevated" id="auth-card" style="max-width:460px;">
+    <div class="brand">
+      <img src="/img/logo-mark.svg" alt="PillPoint" width="34" height="34" style="border-radius:9px;" />
+      <div style="font-weight:800;font-size:19px;color:var(--navy)">Create your account</div>
+    </div>
+    <p class="text-sm muted" style="text-align:center;margin-bottom:16px;">
+      Self-registration is for customers and pharmacies only. Admin accounts are provisioned separately and can't be created here.
+    </p>
+
+    <div id="alert-box"></div>
+
+    <div class="account-type-select" id="account-type">
+      <button type="button" class="account-type-card active" data-role="customer">
+        <span class="icon">&#128100;</span>
+        <span class="title">Customer</span>
+        <span class="sub">Search & reserve medicine</span>
+      </button>
+      <button type="button" class="account-type-card" data-role="pharmacy_staff">
+        <span class="icon">&#127974;</span>
+        <span class="title">Pharmacy</span>
+        <span class="sub">List inventory & fulfill reservations</span>
+      </button>
+    </div>
+
+    <form id="register-form">
+      <div class="field" id="username-field">
+        <label>Username</label>
+        <input type="text" id="username" required autocomplete="username" />
+      </div>
+      <div class="field">
+        <label>Mobile Number</label>
+        <div class="phone-input">
+          <span class="phone-input-prefix" aria-hidden="true">+63</span>
+          <input type="tel" id="phone" placeholder="9XXXXXXXXX" inputmode="numeric" pattern="9[0-9]{9}" maxlength="10" required autocomplete="tel-national" aria-label="Philippine mobile number after +63" />
+        </div>
+        <div class="text-sm muted mt-8">Enter the 10-digit number starting with 9.</div>
+      </div>
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="email" required autocomplete="username" />
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <div class="password-field">
+          <input type="password" id="password" minlength="6" required autocomplete="new-password" />
+          <button type="button" class="password-toggle" id="password-toggle" aria-label="Show password">&#128065;</button>
+        </div>
+      </div>
+
+      <div id="pharmacy-fields" style="display:none;">
+        <div class="divider" style="margin:18px 0;"></div>
+        <div class="section-title" style="margin-top:0;">Pharmacy Details</div>
+        <div class="field">
+          <label>Pharmacy Name</label>
+          <input type="text" id="pharmacy_name" />
+        </div>
+        <div class="grid grid-2">
+          <div class="field">
+            <label>Owner First Name</label>
+            <input type="text" id="owner_first_name" />
+          </div>
+          <div class="field">
+            <label>Owner Last Name</label>
+            <input type="text" id="owner_last_name" />
+          </div>
+        </div>
+        <div class="field">
+          <label>Business Permit</label>
+          <input type="file" id="business_permit_input" accept="application/pdf,image/png,image/jpeg,image/webp" />
+          <div class="text-sm muted mt-8" id="business-permit-name">Upload a PDF, PNG, JPG, or WEBP file (max 4MB).</div>
+        </div>
+        <div class="field">
+          <label>Address</label>
+          <input type="text" id="pharmacy_address" placeholder="Street, City" />
+        </div>
+        <div class="field">
+          <label>Pharmacy Location <span class="muted text-sm">(click the map to place a pin)</span></label>
+          <div class="map-placeholder" style="height:220px;">
+            <div id="picker-map"></div>
+          </div>
+          <p class="text-sm muted mt-8" id="picker-coords">No location set yet.</p>
+        </div>
+        <div class="field">
+          <label>Short Description <span class="muted text-sm">(optional)</span></label>
+          <textarea id="pharmacy_description" rows="2" placeholder="What makes your pharmacy stand out?"></textarea>
+        </div>
+        <div class="field">
+          <label>Operating Hours <span class="muted text-sm">(optional)</span></label>
+          <input type="text" id="pharmacy_hours" placeholder="e.g. Mon–Sat: 8AM–9PM" />
+        </div>
+        <div class="alert alert-info text-sm">Your pharmacy will be listed as <strong>unverified</strong> until an admin reviews and approves it.</div>
+      </div>
+
+      <button class="btn btn-primary btn-block mt-16" type="submit">Create Account</button>
+    </form>
+
+    <div class="auth-foot">
+      Already have an account? <a href="/login.html" style="color:var(--teal-dark);font-weight:600">Login</a>
+    </div>
+  </div>
+</div>
+
+<script src="/js/api.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+let selectedRole = 'customer';
+let pickedLat = null, pickedLng = null;
+let pickerMap, pickerMarker;
+let businessPermitData = null;
+
+document.getElementById('account-type').addEventListener('click', (e) => {
+  const btn = e.target.closest('.account-type-card');
+  if (!btn) return;
+  document.querySelectorAll('.account-type-card').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  selectedRole = btn.dataset.role;
+
+  const usernameField = document.getElementById('username-field');
+  const usernameInput = document.getElementById('username');
+  usernameField.style.display = selectedRole === 'pharmacy_staff' ? 'none' : 'block';
+  usernameInput.required = selectedRole !== 'pharmacy_staff';
+
+  const pharmacyFields = document.getElementById('pharmacy-fields');
+  if (selectedRole === 'pharmacy_staff') {
+    pharmacyFields.style.display = 'block';
+    document.getElementById('pharmacy_name').required = true;
+    document.getElementById('pharmacy_address').required = true;
+    document.getElementById('owner_first_name').required = true;
+    document.getElementById('owner_last_name').required = true;
+    document.getElementById('business_permit_input').required = true;
+    if (!pickerMap) initPickerMap();
+    setTimeout(() => pickerMap && pickerMap.invalidateSize(), 50);
+  } else {
+    pharmacyFields.style.display = 'none';
+    document.getElementById('pharmacy_name').required = false;
+    document.getElementById('pharmacy_address').required = false;
+    document.getElementById('owner_first_name').required = false;
+    document.getElementById('owner_last_name').required = false;
+    document.getElementById('business_permit_input').required = false;
+  }
+});
+
+function initPickerMap() {
+  pickerMap = L.map('picker-map').setView([8.9475, 125.5406], 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(pickerMap);
+
+  pickerMap.on('click', (e) => {
+    pickedLat = e.latlng.lat;
+    pickedLng = e.latlng.lng;
+    if (pickerMarker) pickerMap.removeLayer(pickerMarker);
+    pickerMarker = L.marker([pickedLat, pickedLng]).addTo(pickerMap);
+    document.getElementById('picker-coords').textContent =
+      `Pin set at ${pickedLat.toFixed(5)}, ${pickedLng.toFixed(5)}`;
+  });
+}
+
+const passwordInput = document.getElementById('password');
+document.getElementById('password-toggle').addEventListener('click', function () {
+  const isHidden = passwordInput.type === 'password';
+  passwordInput.type = isHidden ? 'text' : 'password';
+  this.innerHTML = isHidden ? '&#128064;' : '&#128065;';
+});
+
+document.getElementById('business_permit_input').addEventListener('change', () => {
+  const file = document.getElementById('business_permit_input').files[0];
+  if (!file) { businessPermitData = null; return; }
+  if (file.size > 4 * 1024 * 1024) {
+    toast('Please choose a business permit under 4MB.', 'error');
+    document.getElementById('business_permit_input').value = '';
+    businessPermitData = null;
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    businessPermitData = reader.result;
+    document.getElementById('business-permit-name').textContent = file.name;
+  };
+  reader.readAsDataURL(file);
+});
+
+document.getElementById('register-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const alertBox = document.getElementById('alert-box');
+  alertBox.innerHTML = '';
+
+  const payload = {
+    phone: `+63${document.getElementById('phone').value.trim()}`,
+    email: document.getElementById('email').value.trim(),
+    password: passwordInput.value,
+    role: selectedRole,
+  };
+  if (selectedRole === 'customer') {
+    payload.username = document.getElementById('username').value.trim();
+  }
+
+  if (selectedRole === 'pharmacy_staff') {
+    payload.pharmacy_name = document.getElementById('pharmacy_name').value.trim();
+    payload.pharmacy_address = document.getElementById('pharmacy_address').value.trim();
+    payload.owner_first_name = document.getElementById('owner_first_name').value.trim();
+    payload.owner_last_name = document.getElementById('owner_last_name').value.trim();
+    payload.business_permit = businessPermitData;
+    payload.description = document.getElementById('pharmacy_description').value.trim();
+    payload.hours = document.getElementById('pharmacy_hours').value.trim();
+    if (pickedLat == null || pickedLng == null) {
+      alertBox.innerHTML = `<div class="alert alert-error">Please click the map to set your pharmacy's location.</div>`;
+      return;
+    }
+    payload.latitude = pickedLat;
+    payload.longitude = pickedLng;
+  }
+
+  try {
+    const { user } = await Api.post('/api/auth/register', payload);
+    if (user.role === 'pharmacy_staff') {
+      document.getElementById('account-type').style.display = 'none';
+      document.getElementById('register-form').style.display = 'none';
+      alertBox.innerHTML = `
+        <div class="alert alert-success">
+          <strong>Registration Successful!</strong> You can complete your pharmacy contact information and profile at any time. Profile and cover photos are optional.
+        </div>
+        <div class="flex" style="gap:10px;flex-wrap:wrap;">
+          <a class="btn btn-primary" href="/profile.html">Set Up Profile</a>
+          <a class="btn btn-outline" href="/pharmacy/dashboard.html">Go to Dashboard</a>
+        </div>`;
+      return;
+    }
+    window.location.href = '/dashboard.html';
+  } catch (err) {
+    alertBox.innerHTML = `<div class="alert alert-error">${escapeHtml(err.message)}</div>`;
+  }
+});
+</script>
+</body>
+</html>

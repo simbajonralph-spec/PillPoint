@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Audit Logs — PillPoint</title>
+<link rel="icon" type="image/svg+xml" href="/img/logo-mark.svg" />
+<link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+<script src="/js/api.js"></script>
+<script src="/js/layout.js"></script>
+<script>
+(async function () {
+  const user = await guardPage(['admin'], 'Audit Log', 'Administrative actions and system activity');
+  if (!user) return;
+  const content = document.getElementById('page-content');
+  content.innerHTML = skeletonLoader('table', 5);
+  try {
+    const data = await Api.get('/api/admin/audit-logs');
+    const logs = data.logs || [];
+    content.innerHTML = `
+      <div class="card" style="padding:0;">
+        <table>
+          <thead>
+            <tr>
+              <th>Action</th>
+              <th>Target</th>
+              <th>Admin</th>
+              <th>Status</th>
+              <th>Date</th>
+              <th>Reason</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${logs.length ? logs.map(log => `
+              <tr>
+                <td><strong>${escapeHtml(log.action || '—')}</strong></td>
+                <td class="text-sm muted">${escapeHtml(log.target_name || log.pharmacy_name || log.target_type || '—')}</td>
+                <td class="text-sm muted">${escapeHtml(log.admin_name || 'System')}</td>
+                <td>${log.status === 'SUCCESS' ? '<span class="badge badge-available">Success</span>' : '<span class="badge badge-warning">' + escapeHtml(log.status || 'Unknown') + '</span>'}</td>
+                <td class="text-sm muted">${log.created_at ? new Date(log.created_at).toLocaleString() : '—'}</td>
+                <td class="text-sm muted">${escapeHtml(log.reason || log.description || '—')}</td>
+              </tr>
+            `).join('') : '<tr><td colspan="6"><div class="empty-state"><h3>No activity logged</h3><p>Admin actions will appear here once they are performed.</p></div></td></tr>'}
+          </tbody>
+        </table>
+      </div>
+    `;
+  } catch (err) {
+    content.innerHTML = `<div class="alert alert-error">${escapeHtml(err.message)}</div>`;
+  }
+})();
+</script>
+</body>
+</html>
