@@ -117,6 +117,7 @@
 
     function reservationReview(item, quantity) {
       const startingQuantity = quantity || 1;
+      const available = Number(item.available_quantity ?? item.stock_quantity ?? 0);
       document.getElementById('pai-reservation-confirmation')?.remove();
       resultBox.insertAdjacentHTML('beforeend', `
         <section class="card mt-12" id="pai-reservation-confirmation">
@@ -125,8 +126,8 @@
             <strong>${escapeHtml(item.pharmacy_name)}</strong> for ${money(item.price)} each.</p>
           <div class="field mt-12">
             <label for="pai-reservation-quantity">Quantity</label>
-            <input id="pai-reservation-quantity" type="number" min="1" max="${Number(item.stock_quantity)}" value="${Number(startingQuantity)}" />
-            <div class="text-sm muted">${Number(item.stock_quantity)} currently in stock. Your reservation is not created until you confirm.</div>
+            <input id="pai-reservation-quantity" type="number" min="1" max="${available}" value="${Number(startingQuantity)}" />
+            <div class="text-sm muted">${available} currently available. Your reservation is not created until you confirm.</div>
           </div>
           <div class="flex gap-12 mt-12">
             <button class="btn btn-primary" id="pai-reservation-confirm" type="button">Confirm reservation</button>
@@ -144,7 +145,7 @@
         const quantityInput = document.getElementById('pai-reservation-quantity');
         const quantity = Number(quantityInput.value);
         const message = document.getElementById('pai-reservation-message');
-        if (!Number.isInteger(quantity) || quantity < 1 || quantity > Number(item.stock_quantity)) {
+        if (!Number.isInteger(quantity) || quantity < 1 || quantity > available) {
           message.innerHTML = '<div class="alert alert-error">Enter a whole quantity within the currently listed stock.</div>';
           return;
         }
@@ -169,7 +170,7 @@
           <article class="card" style="padding:12px 14px; margin-bottom:10px;">
             <div style="font-weight:700;">${escapeHtml(item.medicine_name)}</div>
             <div class="text-sm muted">${escapeHtml(item.pharmacy_name)} · ${escapeHtml(item.address)}</div>
-            <div class="text-sm muted">Stock: ${Number(item.stock_quantity)} · ${escapeHtml(item.verification_status || 'VERIFIED')}</div>
+            <div class="text-sm muted">Available: ${Number(item.available_quantity ?? item.stock_quantity ?? 0)} · ${escapeHtml(item.verification_status || 'VERIFIED')}</div>
             <div style="font-weight:700; margin-top:6px;">${money(item.price)}</div>
             <button class="btn btn-outline btn-sm mt-8 pai-review-reservation" type="button" data-index="${index}">Review reservation</button>
           </article>

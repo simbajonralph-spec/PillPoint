@@ -130,10 +130,11 @@ CREATE TABLE IF NOT EXISTS reservations (
   inventory_id INTEGER NOT NULL,
   quantity INTEGER NOT NULL,
   price_at_reservation REAL,
-  status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','confirmed','completed','cancelled','expired')),
+  status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','confirmed','ready_for_pickup','completed','cancelled','expired')),
   reserved_at TEXT DEFAULT CURRENT_TIMESTAMP,
   expires_at TEXT,
   completed_at TEXT,
+  issue_note TEXT,
   FOREIGN KEY (customer_id) REFERENCES users(id),
   FOREIGN KEY (inventory_id) REFERENCES inventory(id)
 );
@@ -235,6 +236,7 @@ CREATE TABLE IF NOT EXISTS stock_transactions (
   medicine_id INTEGER NOT NULL,
   inventory_id INTEGER,
   batch_id INTEGER,
+  supplier_id INTEGER,
   transaction_type TEXT NOT NULL CHECK(transaction_type IN ('stock_in','stock_out','reservation','reservation_cancellation','adjustment','damaged','expired','return','deployment','undeployment')),
   quantity INTEGER NOT NULL DEFAULT 0,
   previous_quantity INTEGER,
@@ -288,10 +290,12 @@ db.exec("CREATE UNIQUE INDEX IF NOT EXISTS users_username_unique ON users(userna
 const reservationCols = db.prepare("PRAGMA table_info(reservations)").all().map(c => c.name);
 if (!reservationCols.includes('price_at_reservation')) db.exec('ALTER TABLE reservations ADD COLUMN price_at_reservation REAL');
 if (!reservationCols.includes('expires_at')) db.exec('ALTER TABLE reservations ADD COLUMN expires_at TEXT');
+if (!reservationCols.includes('issue_note')) db.exec('ALTER TABLE reservations ADD COLUMN issue_note TEXT');
 db.exec('UPDATE reservations SET price_at_reservation = (SELECT price FROM inventory WHERE inventory.id = reservations.inventory_id) WHERE price_at_reservation IS NULL');
 const reservationTableSql = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'reservations'").get().sql;
-if (!reservationTableSql.includes("'expired'") || !reservationCols.includes('completed_at')) {
+if (!reservationTableSql.includes("'expired'") || !reservationTableSql.includes("'ready_for_pickup'") || !reservationCols.includes('completed_at')) {
   const completedAt = reservationCols.includes('completed_at') ? 'completed_at' : 'NULL';
+  const issueNote = 'issue_note';
   const rebuildReservations = db.transaction(() => {
     db.exec(`
       CREATE TABLE reservations_new (
@@ -300,17 +304,18 @@ if (!reservationTableSql.includes("'expired'") || !reservationCols.includes('com
         inventory_id INTEGER NOT NULL,
         quantity INTEGER NOT NULL,
         price_at_reservation REAL,
-        status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','confirmed','completed','cancelled','expired')),
+        status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','confirmed','ready_for_pickup','completed','cancelled','expired')),
         reserved_at TEXT DEFAULT CURRENT_TIMESTAMP,
         expires_at TEXT,
         completed_at TEXT,
+        issue_note TEXT,
         FOREIGN KEY (customer_id) REFERENCES users(id),
         FOREIGN KEY (inventory_id) REFERENCES inventory(id)
       )
     `);
     db.exec(`
-      INSERT INTO reservations_new (id, customer_id, inventory_id, quantity, price_at_reservation, status, reserved_at, expires_at, completed_at)
-      SELECT id, customer_id, inventory_id, quantity, price_at_reservation, status, reserved_at, expires_at, ${completedAt}
+      INSERT INTO reservations_new (id, customer_id, inventory_id, quantity, price_at_reservation, status, reserved_at, expires_at, completed_at, issue_note)
+      SELECT id, customer_id, inventory_id, quantity, price_at_reservation, status, reserved_at, expires_at, ${completedAt}, ${issueNote}
       FROM reservations
     `);
     db.exec('DROP TABLE reservations');
@@ -407,6 +412,10 @@ if (!batchCols.includes('status')) db.exec("ALTER TABLE medicine_batches ADD COL
 const transactionCols = db.prepare("PRAGMA table_info(stock_transactions)").all().map(c => c.name);
 if (!transactionCols.includes('batch_id')) db.exec('ALTER TABLE stock_transactions ADD COLUMN batch_id INTEGER');
 if (!transactionCols.includes('reference_number')) db.exec('ALTER TABLE stock_transactions ADD COLUMN reference_number TEXT');
+if (!transactionCols.includes('supplier_id')) db.exec('ALTER TABLE stock_transactions ADD COLUMN supplier_id INTEGER');
+db.exec(`UPDATE stock_transactions SET supplier_id = (
+  SELECT supplier_id FROM medicine_batches WHERE medicine_batches.id = stock_transactions.batch_id
+) WHERE supplier_id IS NULL AND batch_id IS NOT NULL`);
 
 const pharmacyStatusUpdate = db.transaction(() => {
   db.exec(`

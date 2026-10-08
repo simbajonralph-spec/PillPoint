@@ -60,7 +60,15 @@ module.exports = function seed(db, bcrypt) {
       const folderId = inDraft ? draftFolderId : liveFolderId;
       const deployed = inDraft ? 0 : 1;
       if (!inDraft) liveCount++;
-      insertInventory.run(pid, mid, folderId, price, stock, 10, brand, deployed, deployed ? new Date().toISOString() : null);
+      const inventoryResult = insertInventory.run(pid, mid, folderId, price, stock, 10, brand, deployed, deployed ? new Date().toISOString() : null);
+      if (stock > 0) {
+        db.prepare(`
+          INSERT INTO medicine_batches (
+            pharmacy_id, medicine_id, inventory_id, batch_number,
+            expiration_date, quantity_received, current_quantity, date_received
+          ) VALUES (?, ?, ?, ?, date('now','+365 days'), ?, ?, CURRENT_TIMESTAMP)
+        `).run(pid, mid, Number(inventoryResult.lastInsertRowid), `SEED-${pid}-${mid}`, stock, stock);
+      }
     });
 
     insertFolderLog.run(pid, liveFolderId, 'Everyday Essentials', liveCount);
