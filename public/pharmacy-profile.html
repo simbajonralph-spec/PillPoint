@@ -277,8 +277,8 @@
               </td>
               <td class="text-sm muted">${escapeHtml(pr.brand || '—')}</td>
               <td>${money(pr.price)}</td>
-              <td>${stockBadge(pr.stock_quantity, 10)}</td>
-              <td>${user?.role === 'customer' ? `<button class="btn btn-primary btn-sm reserve-btn" data-id="${pr.inventory_id}" data-name="${escapeHtml(pr.medicine_name)}" data-max="${pr.stock_quantity}" data-price="${pr.price}" ${pr.stock_quantity === 0 ? 'disabled' : ''}>Reserve</button>` : `<a class="btn btn-outline btn-sm" href="${reviewSignInUrl}">Sign In</a>`}</td>
+              <td>${stockBadge(Number(pr.available_quantity ?? pr.stock_quantity), 10)}</td>
+              <td>${user?.role === 'customer' ? `<button class="btn btn-primary btn-sm reserve-btn" data-id="${pr.inventory_id}" data-name="${escapeHtml(pr.medicine_name)}" data-max="${Number(pr.available_quantity ?? pr.stock_quantity)}" data-price="${pr.price}" ${Number(pr.available_quantity ?? pr.stock_quantity) <= 0 ? 'disabled' : ''}>Reserve</button>` : `<a class="btn btn-outline btn-sm" href="${reviewSignInUrl}">Sign In</a>`}</td>
             </tr>
           `).join('')}
         </tbody>
