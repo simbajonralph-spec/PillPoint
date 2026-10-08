@@ -127,6 +127,12 @@ function searchVerifiedInventory(options = {}) {
   const eligibleQuantity = eligibleBatchQuantitySql('i');
   const availableQuantity = `MAX(0, MIN(i.stock_quantity, ${eligibleQuantity}) -
     COALESCE((SELECT SUM(r.quantity) FROM reservations r WHERE r.inventory_id = i.id AND r.status IN ('pending','confirmed','ready_for_pickup')), 0))`;
+  const pharmacyHasAvailable = `EXISTS (
+    SELECT 1 FROM inventory available
+    JOIN medicines available_medicine ON available_medicine.id = available.medicine_id
+    WHERE available.pharmacy_id = p.id
+      AND ${publishedProductSql('available', 'available_medicine')}
+  )`;
 
   let sql = `
     SELECT i.id AS inventory_id, i.price, i.stock_quantity, i.low_stock_threshold, i.brand, i.deployed,
@@ -136,7 +142,8 @@ function searchVerifiedInventory(options = {}) {
       p.id AS pharmacy_id, p.name AS pharmacy_name, p.address, p.latitude, p.longitude,
       COALESCE(p.verification_status, CASE WHEN p.verified = 1 THEN 'VERIFIED' ELSE 'PENDING' END) AS verification_status,
       p.verified, p.store_image, p.profile_image, p.cover_image, p.description, p.hours,
-      CASE WHEN ${availableQuantity} > 0
+      ${availableQuantity} AS available_stock,
+      CASE WHEN ${pharmacyHasAvailable}
         THEN 'Available' ELSE 'No stock currently available' END AS pharmacy_status,
       (SELECT ROUND(AVG(rating), 1) FROM pharmacy_ratings WHERE pharmacy_id = p.id) AS average_rating,
       (SELECT COUNT(*) FROM pharmacy_ratings WHERE pharmacy_id = p.id) AS rating_count

@@ -165,7 +165,10 @@ test('pharmacy analytics uses filtered database records consistently and reports
     assert.equal(data.operations.adjustmentFrequency, 1);
     assert.equal(data.inventory.stock_turnover.value, null);
     assert.match(data.inventory.stock_turnover.reason, /Insufficient data/);
-    assert.equal(data.demand.searchReservationRelationship[0].units_reserved, 3);
+    assert.equal(
+      data.demand.searchReservationRelationship.find(row => row.medicine_id === medicineId).units_reserved,
+      3
+    );
 
     const invalidRange = getAnalytics({
       query: { start_date: `${today}garbage`, end_date: today },

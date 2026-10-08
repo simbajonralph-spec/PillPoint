@@ -23,43 +23,36 @@
         <div class="card stat-card"><div class="stat-icon">&#128276;</div><div class="stat-label">Unread Notifications</div><div class="stat-value">${data.unreadNotifications}</div></div>
       </div>
 
-      <div class="dashboard-bottom grid mt-24">
+           <div class="mt-24">
+        <div class="card-title" style="margin-top:0;">Recent Reservations</div>
         <div class="card">
-          <div class="card-title">Search Medicine</div>
-          ${data.searchActivity.topSearchedMedicines.length
-            ? pieChartSvg(data.searchActivity.topSearchedMedicines.map(m => ({ label: m.name, value: m.count })), { size: 190 })
-            : `<div class="empty-state" style="padding:24px;"><div class="icon">&#128202;</div><p class="text-sm">Search for a medicine to see your top picks here.</p></div>`}
-        </div>
-
-        <div>
-          <div class="card-title" style="margin-top:0;">Recent Reservations</div>
-          <div class="card">
-            ${data.recentReservations.length ? `
-              <div class="table-wrap">
-                <table>
-                  <thead><tr><th>Medicine</th><th>Qty</th><th>Pharmacy</th><th>Status</th><th>Reserved</th></tr></thead>
-                  <tbody>
-                    ${data.recentReservations.map(r => `
-                      <tr>
-                        <td>${escapeHtml(r.medicine_name)}</td>
-                        <td>${r.quantity}</td>
-                        <td>${escapeHtml(r.pharmacy_name)}</td>
-                        <td>${statusBadge(r.status)}</td>
-                        <td class="muted text-sm">${new Date(r.reserved_at).toLocaleString()}</td>
-                      </tr>`).join('')}
-                  </tbody>
-                </table>
-              </div>
-            ` : `
-              <div class="empty-state">
-                <div class="icon">&#128203;</div>
-                <h3>No reservations yet</h3>
-                <p>Search for a medicine and reserve it at a nearby pharmacy.</p>
-              </div>
-            `}
-          </div>
+          ${data.recentReservations.length ? `
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Medicine</th><th>Qty</th><th>Pharmacy</th><th>Status</th><th>Reserved</th></tr></thead>
+                <tbody>
+                  ${data.recentReservations.map(r => `
+                    <tr>
+                      <td>${escapeHtml(r.medicine_name)}</td>
+                      <td>${r.quantity}</td>
+                      <td>${escapeHtml(r.pharmacy_name)}</td>
+                      <td>${statusBadge(r.status)}</td>
+                      <td class="muted text-sm">${new Date(r.reserved_at).toLocaleString()}</td>
+                    </tr>`).join('')}
+                </tbody>
+              </table>
+            </div>
+          ` : `
+            <div class="empty-state">
+              <div class="icon">&#128203;</div>
+              <h3>No reservations yet</h3>
+              <p>Search for a medicine and reserve it at a nearby pharmacy.</p>
+            </div>
+          `}
         </div>
       </div>
+
+          
 
       <div class="card mt-24">
         <div class="card-title">P.A.I. Assistant</div>
@@ -117,7 +110,7 @@
 
     function reservationReview(item, quantity) {
       const startingQuantity = quantity || 1;
-      const available = Number(item.available_quantity ?? item.stock_quantity ?? 0);
+      const availableStock = Number(item.available_stock);
       document.getElementById('pai-reservation-confirmation')?.remove();
       resultBox.insertAdjacentHTML('beforeend', `
         <section class="card mt-12" id="pai-reservation-confirmation">
@@ -126,8 +119,8 @@
             <strong>${escapeHtml(item.pharmacy_name)}</strong> for ${money(item.price)} each.</p>
           <div class="field mt-12">
             <label for="pai-reservation-quantity">Quantity</label>
-            <input id="pai-reservation-quantity" type="number" min="1" max="${available}" value="${Number(startingQuantity)}" />
-            <div class="text-sm muted">${available} currently available. Your reservation is not created until you confirm.</div>
+            <input id="pai-reservation-quantity" type="number" min="1" max="${availableStock}" value="${Number(startingQuantity)}" />
+            <div class="text-sm muted">${availableStock} available (${Number(item.stock_quantity)} physical, ${Number(item.reserved_quantity)} reserved). Your reservation is not created until you confirm.</div>
           </div>
           <div class="flex gap-12 mt-12">
             <button class="btn btn-primary" id="pai-reservation-confirm" type="button">Confirm reservation</button>
@@ -145,7 +138,7 @@
         const quantityInput = document.getElementById('pai-reservation-quantity');
         const quantity = Number(quantityInput.value);
         const message = document.getElementById('pai-reservation-message');
-        if (!Number.isInteger(quantity) || quantity < 1 || quantity > available) {
+        if (!Number.isInteger(quantity) || quantity < 1 || quantity > availableStock) {
           message.innerHTML = '<div class="alert alert-error">Enter a whole quantity within the currently listed stock.</div>';
           return;
         }
@@ -170,7 +163,7 @@
           <article class="card" style="padding:12px 14px; margin-bottom:10px;">
             <div style="font-weight:700;">${escapeHtml(item.medicine_name)}</div>
             <div class="text-sm muted">${escapeHtml(item.pharmacy_name)} · ${escapeHtml(item.address)}</div>
-            <div class="text-sm muted">Available: ${Number(item.available_quantity ?? item.stock_quantity ?? 0)} · ${escapeHtml(item.verification_status || 'VERIFIED')}</div>
+            <div class="text-sm muted">${Number(item.available_stock)} available · ${Number(item.stock_quantity)} physical · ${Number(item.reserved_quantity)} reserved · ${escapeHtml(item.verification_status || 'VERIFIED')}</div>
             <div style="font-weight:700; margin-top:6px;">${money(item.price)}</div>
             <button class="btn btn-outline btn-sm mt-8 pai-review-reservation" type="button" data-index="${index}">Review reservation</button>
           </article>

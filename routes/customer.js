@@ -141,12 +141,17 @@ router.get('/medicines/search', (req, res) => {
   )`;
 
   let sql = `
-    SELECT i.id AS inventory_id, i.price, i.stock_quantity, i.low_stock_threshold, i.brand,
+    SELECT i.id AS inventory_id, i.price, i.stock_quantity, i.deployed,
+           i.low_stock_threshold, i.brand,
            COALESCE((SELECT SUM(r.quantity) FROM reservations r WHERE r.inventory_id = i.id AND r.status IN ('pending','confirmed','ready_for_pickup')), 0) AS reserved_quantity,
            ${availableQuantity} AS available_quantity,
+           ${availableQuantity} AS available_stock,
            m.id AS medicine_id, m.name AS medicine_name, m.category,
-           p.id AS pharmacy_id, p.name AS pharmacy_name, p.address, p.latitude, p.longitude,
-           COALESCE(p.verification_status, CASE WHEN p.verified = 1 THEN 'VERIFIED' ELSE 'PENDING' END) AS verification_status,
+           p.id AS pharmacy_id, p.name AS pharmacy_name, p.address,
+           p.latitude, p.longitude,
+           COALESCE(p.verification_status,
+             CASE WHEN p.verified = 1 THEN 'VERIFIED' ELSE 'PENDING' END
+           ) AS verification_status,
            p.verified,
            p.store_image, p.profile_image, p.cover_image, p.description, p.hours,
            CASE WHEN ${pharmacyHasAvailable} THEN 'Available' ELSE 'No stock currently available' END AS pharmacy_status,
@@ -159,6 +164,7 @@ router.get('/medicines/search', (req, res) => {
       AND m.name LIKE ? AND ${publishedProductSql('i', 'm')}
       AND ${availableQuantity} > 0
   `;
+
   const params = [q];
   if (category) {
     sql += ' AND m.category = ?';
@@ -286,13 +292,14 @@ router.get('/reservations', (req, res) => {
 // POST /api/customer/reservations  { inventory_id, quantity }
 router.post('/reservations', (req, res) => {
   const { inventory_id, quantity } = req.body;
+  const inventoryId = Number(inventory_id);
   const qty = Number(quantity);
-  if (!inventory_id || !Number.isInteger(qty) || qty < 1) {
+  if (!Number.isSafeInteger(inventoryId) || inventoryId < 1
+    || !Number.isSafeInteger(qty) || qty < 1) {
     return res.status(422).json({ error: 'inventory_id and a valid quantity are required.' });
   }
 
-  const inv = db.prepare(`SELECT i.* FROM inventory i JOIN medicines m ON m.id = i.medicine_id
-    WHERE i.id = ? AND ${publishedProductSql('i', 'm')}`).get(inventory_id);
+  const inv = db.prepare('SELECT * FROM inventory WHERE id = ?').get(inventoryId);
   if (!inv) return res.status(404).json({ error: 'Inventory item not found.' });
 
   const tx = db.transaction(() => {

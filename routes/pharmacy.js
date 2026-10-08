@@ -1525,8 +1525,10 @@ router.get('/analytics', (req, res) => {
     && /^\d{4}-\d{2}-\d{2}$/.test(value)
     && !Number.isNaN(Date.parse(`${value}T00:00:00Z`))
     && new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value;
-  const today = new Date().toISOString().slice(0, 10);
-  const defaultStart = new Date(Date.now() - 29 * 86400000).toISOString().slice(0, 10);
+  const { today, defaultStart } = db.prepare(`
+    SELECT date('now', 'localtime') AS today,
+      date('now', 'localtime', '-29 days') AS defaultStart
+  `).get();
   const startDate = req.query.start_date || defaultStart;
   const endDate = req.query.end_date || today;
   if (!validDate(startDate) || !validDate(endDate)) {
