@@ -1,4 +1,5 @@
 const db = require('../../db/database');
+const { eligibleBatchQuantitySql, publishedProductSql } = require('../inventory-batches');
 
 function normalizeText(value) {
   return (value || '')
@@ -123,21 +124,28 @@ function parseMedicineQuery(rawQuery) {
 
 function searchVerifiedInventory(options = {}) {
   const { query = '', max_price = null, medicine_id = null, pharmacy_id = null, inventory_ids = [] } = options;
+  const eligibleQuantity = eligibleBatchQuantitySql('i');
+  const availableQuantity = `MAX(0, MIN(i.stock_quantity, ${eligibleQuantity}) -
+    COALESCE((SELECT SUM(r.quantity) FROM reservations r WHERE r.inventory_id = i.id AND r.status IN ('pending','confirmed','ready_for_pickup')), 0))`;
 
   let sql = `
     SELECT i.id AS inventory_id, i.price, i.stock_quantity, i.low_stock_threshold, i.brand, i.deployed,
+      COALESCE((SELECT SUM(r.quantity) FROM reservations r WHERE r.inventory_id = i.id AND r.status IN ('pending','confirmed','ready_for_pickup')), 0) AS reserved_quantity,
+      ${availableQuantity} AS available_quantity,
       m.id AS medicine_id, m.name AS medicine_name, m.category,
       p.id AS pharmacy_id, p.name AS pharmacy_name, p.address, p.latitude, p.longitude,
       COALESCE(p.verification_status, CASE WHEN p.verified = 1 THEN 'VERIFIED' ELSE 'PENDING' END) AS verification_status,
       p.verified, p.store_image, p.profile_image, p.cover_image, p.description, p.hours,
-      CASE WHEN i.stock_quantity > 0 THEN 'Available' ELSE 'No stock currently available' END AS pharmacy_status,
+      CASE WHEN ${availableQuantity} > 0
+        THEN 'Available' ELSE 'No stock currently available' END AS pharmacy_status,
       (SELECT ROUND(AVG(rating), 1) FROM pharmacy_ratings WHERE pharmacy_id = p.id) AS average_rating,
       (SELECT COUNT(*) FROM pharmacy_ratings WHERE pharmacy_id = p.id) AS rating_count
     FROM inventory i
     JOIN medicines m ON m.id = i.medicine_id
     JOIN pharmacies p ON p.id = i.pharmacy_id
     WHERE COALESCE(p.verification_status, CASE WHEN p.verified = 1 THEN 'VERIFIED' ELSE 'PENDING' END) = 'VERIFIED'
-      AND i.deployed = 1 AND i.stock_quantity > 0
+      AND ${publishedProductSql('i', 'm')}
+      AND ${availableQuantity} > 0
   `;
 
   const params = [];

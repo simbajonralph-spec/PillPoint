@@ -1,5 +1,6 @@
 const express = require('express');
 const db = require('../db/database');
+const { eligibleBatchQuantitySql, publishedProductSql } = require('../services/inventory-batches');
 const router = express.Router();
 
 function distanceKm(lat1, lon1, lat2, lon2) {
@@ -28,9 +29,12 @@ router.get('/pharmacies/:id', (req, res) => {
     : null;
   const products = db.prepare(`
     SELECT i.id AS inventory_id, i.price, i.stock_quantity, i.brand,
+      COALESCE((SELECT SUM(r.quantity) FROM reservations r WHERE r.inventory_id = i.id AND r.status IN ('pending','confirmed','ready_for_pickup')), 0) AS reserved_quantity,
+      MAX(0, MIN(i.stock_quantity, ${eligibleBatchQuantitySql('i')}) -
+        COALESCE((SELECT SUM(r.quantity) FROM reservations r WHERE r.inventory_id = i.id AND r.status IN ('pending','confirmed','ready_for_pickup')), 0)) AS available_quantity,
       m.id AS medicine_id, m.name AS medicine_name, m.category
     FROM inventory i JOIN medicines m ON m.id = i.medicine_id
-    WHERE i.pharmacy_id = ? AND i.deployed = 1 ORDER BY m.name ASC
+    WHERE i.pharmacy_id = ? AND ${publishedProductSql('i', 'm')} ORDER BY m.name ASC
   `).all(pharmacy.id);
   const viewerId = req.session.user?.role === 'customer' ? req.session.user.id : null;
   const reviews = db.prepare(`

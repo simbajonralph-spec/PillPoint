@@ -81,6 +81,12 @@ test('pharmacy insights use scoped inventory, reservations, batches, peer prices
     assert.equal(demand.recent_stock_out_units, 14);
     assert.equal(demand.previous_reservation_units, 4);
     assert.equal(demand.recent_searches, 1);
+    assert.deepEqual(result.top_searched[0], {
+      medicine_id: medicineId,
+      medicine_name: 'P.A.I. Pharmacy Insight Test Medicine',
+      search_count: 1,
+    });
+    assert.equal(result.demand_analysis.restock_recommendations[0].medicine_name, 'P.A.I. Pharmacy Insight Test Medicine');
 
     const expiry = result.expiry_risk.items.find(item => item.batch_number === 'PAI-INSIGHT-BATCH');
     assert.ok(expiry);

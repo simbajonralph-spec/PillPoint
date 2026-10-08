@@ -1,6 +1,7 @@
 const express = require('express');
 const db = require('../db/database');
 const { requireAuth, requireRole } = require('../middleware');
+const { eligibleBatchQuantitySql, publishedProductSql } = require('../services/inventory-batches');
 const router = express.Router();
 
 // Haversine distance in km
@@ -129,24 +130,34 @@ router.get('/dashboard', (req, res) => {
 router.get('/medicines/search', (req, res) => {
   const q = `%${(req.query.q || '').trim()}%`;
   const category = (req.query.category || '').trim();
+  const eligibleQuantity = eligibleBatchQuantitySql('i');
+  const availableQuantity = `MAX(0, MIN(i.stock_quantity, ${eligibleQuantity}) -
+    COALESCE((SELECT SUM(r.quantity) FROM reservations r WHERE r.inventory_id = i.id AND r.status IN ('pending','confirmed','ready_for_pickup')), 0))`;
+  const pharmacyHasAvailable = `EXISTS (
+    SELECT 1 FROM inventory available
+    JOIN medicines available_medicine ON available_medicine.id = available.medicine_id
+    WHERE available.pharmacy_id = p.id
+      AND ${publishedProductSql('available', 'available_medicine')}
+  )`;
 
   let sql = `
     SELECT i.id AS inventory_id, i.price, i.stock_quantity, i.low_stock_threshold, i.brand,
+           COALESCE((SELECT SUM(r.quantity) FROM reservations r WHERE r.inventory_id = i.id AND r.status IN ('pending','confirmed','ready_for_pickup')), 0) AS reserved_quantity,
+           ${availableQuantity} AS available_quantity,
            m.id AS medicine_id, m.name AS medicine_name, m.category,
            p.id AS pharmacy_id, p.name AS pharmacy_name, p.address, p.latitude, p.longitude,
            COALESCE(p.verification_status, CASE WHEN p.verified = 1 THEN 'VERIFIED' ELSE 'PENDING' END) AS verification_status,
            p.verified,
            p.store_image, p.profile_image, p.cover_image, p.description, p.hours,
-           CASE WHEN EXISTS (
-             SELECT 1 FROM inventory available
-             WHERE available.pharmacy_id = p.id AND available.deployed = 1 AND available.stock_quantity > 0
-           ) THEN 'Available' ELSE 'No stock currently available' END AS pharmacy_status,
+           CASE WHEN ${pharmacyHasAvailable} THEN 'Available' ELSE 'No stock currently available' END AS pharmacy_status,
            (SELECT ROUND(AVG(rating), 1) FROM pharmacy_ratings WHERE pharmacy_id = p.id) AS average_rating,
            (SELECT COUNT(*) FROM pharmacy_ratings WHERE pharmacy_id = p.id) AS rating_count
     FROM inventory i
     JOIN medicines m ON m.id = i.medicine_id
     JOIN pharmacies p ON p.id = i.pharmacy_id
-    WHERE COALESCE(p.verification_status, CASE WHEN p.verified = 1 THEN 'VERIFIED' ELSE 'PENDING' END) = 'VERIFIED' AND m.name LIKE ? AND i.deployed = 1 AND i.stock_quantity > 0
+    WHERE COALESCE(p.verification_status, CASE WHEN p.verified = 1 THEN 'VERIFIED' ELSE 'PENDING' END) = 'VERIFIED'
+      AND m.name LIKE ? AND ${publishedProductSql('i', 'm')}
+      AND ${availableQuantity} > 0
   `;
   const params = [q];
   if (category) {
@@ -210,7 +221,7 @@ router.get('/pharmacies/nearby', (req, res) => {
   res.json({ pharmacies: withDistance, hasUserLocation: isFinite(lat) && isFinite(lng) });
 });
 
-// GET /api/customer/pharmacies/:id — full pharmacy profile + its currently deployed products.
+// GET /api/customer/pharmacies/:id — full pharmacy profile + its currently published products.
 // "Currently selling" always reflects live folder deployments, never draft/archived items.
 router.get('/pharmacies/:id', (req, res) => {
   const pharmacy = db.prepare(`
@@ -232,9 +243,12 @@ router.get('/pharmacies/:id', (req, res) => {
 
   const products = db.prepare(`
     SELECT i.id AS inventory_id, i.price, i.stock_quantity, i.brand,
+    COALESCE((SELECT SUM(r.quantity) FROM reservations r WHERE r.inventory_id = i.id AND r.status IN ('pending','confirmed','ready_for_pickup')), 0) AS reserved_quantity,
+    MAX(0, MIN(i.stock_quantity, ${eligibleBatchQuantitySql('i')}) -
+      COALESCE((SELECT SUM(r.quantity) FROM reservations r WHERE r.inventory_id = i.id AND r.status IN ('pending','confirmed','ready_for_pickup')), 0)) AS available_quantity,
            m.id AS medicine_id, m.name AS medicine_name, m.category
     FROM inventory i JOIN medicines m ON m.id = i.medicine_id
-    WHERE i.pharmacy_id = ? AND i.deployed = 1
+    WHERE i.pharmacy_id = ? AND ${publishedProductSql('i', 'm')}
     ORDER BY m.name ASC
   `).all(pharmacy.id);
 
@@ -272,26 +286,34 @@ router.get('/reservations', (req, res) => {
 // POST /api/customer/reservations  { inventory_id, quantity }
 router.post('/reservations', (req, res) => {
   const { inventory_id, quantity } = req.body;
-  const qty = parseInt(quantity, 10);
-  if (!inventory_id || !qty || qty < 1) {
+  const qty = Number(quantity);
+  if (!inventory_id || !Number.isInteger(qty) || qty < 1) {
     return res.status(422).json({ error: 'inventory_id and a valid quantity are required.' });
   }
 
-  const inv = db.prepare('SELECT * FROM inventory WHERE id = ?').get(inventory_id);
+  const inv = db.prepare(`SELECT i.* FROM inventory i JOIN medicines m ON m.id = i.medicine_id
+    WHERE i.id = ? AND ${publishedProductSql('i', 'm')}`).get(inventory_id);
   if (!inv) return res.status(404).json({ error: 'Inventory item not found.' });
-  if (!inv.deployed) return res.status(422).json({ error: 'This item is not currently available for reservation.' });
 
   const tx = db.transaction(() => {
-    const currentInventory = db.prepare('SELECT * FROM inventory WHERE id = ?').get(inv.id);
-    if (!currentInventory || !currentInventory.deployed) {
+    const currentInventory = db.prepare(`SELECT i.* FROM inventory i JOIN medicines m ON m.id = i.medicine_id
+      WHERE i.id = ? AND ${publishedProductSql('i', 'm')}`).get(inv.id);
+    if (!currentInventory) {
       return { error: 'This item is not currently available for reservation.', status: 422 };
     }
     const reservedNow = db.prepare(`
       SELECT COALESCE(SUM(quantity), 0) AS reserved
       FROM reservations
-      WHERE inventory_id = ? AND status IN ('pending','confirmed')
+      WHERE inventory_id = ? AND status IN ('pending','confirmed','ready_for_pickup')
     `).get(currentInventory.id).reserved;
-    if (currentInventory.stock_quantity - reservedNow < qty) {
+    const eligibleNow = Number(db.prepare(`
+      SELECT COALESCE(SUM(current_quantity), 0) AS total
+      FROM medicine_batches
+      WHERE inventory_id = ? AND current_quantity > 0
+        AND status IN ('active','expiring_soon')
+        AND (expiration_date IS NULL OR date(expiration_date) >= date('now','localtime'))
+    `).get(currentInventory.id).total);
+    if (Math.max(0, Math.min(Number(currentInventory.stock_quantity), eligibleNow) - Number(reservedNow)) < qty) {
       return { error: 'Not enough available stock for this reservation.', status: 422 };
     }
 
@@ -300,6 +322,21 @@ router.post('/reservations', (req, res) => {
       INSERT INTO reservations (customer_id, inventory_id, quantity, price_at_reservation, status, expires_at)
       VALUES (?, ?, ?, ?, 'pending', ?)
     `).run(req.session.user.id, currentInventory.id, qty, currentInventory.price, expires);
+    db.prepare(`INSERT INTO stock_transactions (
+      pharmacy_id, medicine_id, inventory_id, transaction_type, quantity,
+      previous_quantity, new_quantity, reason, reference_number, remarks
+    ) VALUES (?, ?, ?, 'reservation', ?, ?, ?, 'reservation_hold', ?, ?)
+    `).run(
+      currentInventory.pharmacy_id, currentInventory.medicine_id, currentInventory.id, qty,
+      currentInventory.stock_quantity, currentInventory.stock_quantity, `RES-${reservation.lastInsertRowid}`,
+      `Reserved ${qty} units; physical stock unchanged.`
+    );
+    db.prepare(`INSERT INTO inventory_audit_logs (pharmacy_id, user_id, entity_type, entity_id, action, details)
+      VALUES (?, ?, 'inventory', ?, 'reservation', ?)
+    `).run(
+      currentInventory.pharmacy_id, req.session.user.id, currentInventory.id,
+      `Reservation #${reservation.lastInsertRowid} held ${qty} units; physical stock unchanged.`
+    );
 
     const medicine = db.prepare('SELECT name FROM medicines WHERE id = ?').get(currentInventory.medicine_id);
     db.prepare(`INSERT INTO notifications (user_id, title, message, type) VALUES (?,?,?,?)`).run(
@@ -329,16 +366,32 @@ router.post('/reservations/:id/cancel', (req, res) => {
   if (reservation.customer_id !== req.session.user.id) {
     return res.status(403).json({ error: 'You can only cancel your own reservations.' });
   }
-  if (!['pending', 'confirmed'].includes(reservation.status)) {
-    return res.status(422).json({ error: 'Only pending or confirmed reservations can be cancelled.' });
+  if (!['pending', 'confirmed', 'ready_for_pickup'].includes(reservation.status)) {
+    return res.status(422).json({ error: 'Only active reservations can be cancelled.' });
   }
 
   const tx = db.transaction(() => {
     const cancelled = db.prepare(`
       UPDATE reservations SET status = 'cancelled'
-      WHERE id = ? AND status IN ('pending','confirmed')
+      WHERE id = ? AND status IN ('pending','confirmed','ready_for_pickup')
     `).run(reservation.id);
     if (!cancelled.changes) return false;
+    const inventory = db.prepare('SELECT * FROM inventory WHERE id = ?').get(reservation.inventory_id);
+    db.prepare(`INSERT INTO stock_transactions (
+      pharmacy_id, medicine_id, inventory_id, transaction_type, quantity,
+      previous_quantity, new_quantity, reason, reference_number, remarks
+    ) VALUES (?, ?, ?, 'reservation_cancellation', ?, ?, ?, 'reservation_released', ?, ?)
+    `).run(
+      inventory.pharmacy_id, inventory.medicine_id, inventory.id, reservation.quantity,
+      inventory.stock_quantity, inventory.stock_quantity, `RES-${reservation.id}`,
+      `Released ${reservation.quantity} reserved units; physical stock unchanged.`
+    );
+    db.prepare(`INSERT INTO inventory_audit_logs (pharmacy_id, user_id, entity_type, entity_id, action, details)
+      VALUES (?, ?, 'inventory', ?, 'reservation_cancellation', ?)
+    `).run(
+      inventory.pharmacy_id, req.session.user.id, inventory.id,
+      `Reservation #${reservation.id} released ${reservation.quantity} units; physical stock unchanged.`
+    );
     db.prepare(`
       INSERT INTO notifications (user_id, title, message, type)
       SELECT id, 'Reservation cancelled by customer', ?, 'reservation'

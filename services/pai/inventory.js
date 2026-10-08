@@ -191,7 +191,10 @@ function getDemandAnalysis(rows, searchActivity) {
 
     const evidence = `${recentReservationUnits} reservation units and ${recentStockOutUnits} stock-out units in the last ${DEMAND_WINDOW_DAYS} days versus ${previousReservationUnits} reservation units and ${previousStockOutUnits} stock-out units in the previous ${DEMAND_WINDOW_DAYS} days; ${searches.recent_searches} pharmacy-matched searches versus ${searches.previous_searches}.`;
     return {
+      inventory_id: item.inventory_id,
       medicine_name: item.medicine_name,
+      current_stock: Number(item.stock_quantity),
+      low_stock_threshold: Number(item.low_stock_threshold),
       trend,
       recent_reservation_units: recentReservationUnits,
       previous_reservation_units: previousReservationUnits,
@@ -235,7 +238,23 @@ function getDemandAnalysis(rows, searchActivity) {
     unusually_high: items.filter(item => item.trend === 'UNUSUALLY_HIGH').length,
     stable: items.filter(item => item.trend === 'STABLE').length,
   };
-  return { items: items.slice(0, 20), summary };
+  const restockRecommendations = items
+    .filter(item => item.current_stock <= item.low_stock_threshold
+      && (item.recent_searches > 0 || item.recent_demand_units > 0))
+    .sort((a, b) => b.recent_searches - a.recent_searches
+      || b.recent_demand_units - a.recent_demand_units
+      || a.medicine_name.localeCompare(b.medicine_name))
+    .slice(0, 5)
+    .map(item => ({
+      inventory_id: item.inventory_id,
+      medicine_name: item.medicine_name,
+      current_stock: item.current_stock,
+      low_stock_threshold: item.low_stock_threshold,
+      recent_searches: item.recent_searches,
+      recent_demand_units: item.recent_demand_units,
+      recommendation: item.recommendation,
+    }));
+  return { items: items.slice(0, 20), restock_recommendations: restockRecommendations, summary };
 }
 
 function getExpiryRisk(pharmacyId) {
@@ -484,6 +503,18 @@ function getInventoryInsights(pharmacyId) {
   const searchActivity = getSearchActivity(pharmacyId, rows.map(item => Number(item.medicine_id)));
   const stockRisk = getStockRisk(rows);
   const demandAnalysis = getDemandAnalysis(rows, searchActivity);
+  const topSearched = rows
+    .map(item => {
+      const activity = searchActivity.get(Number(item.medicine_id));
+      return {
+        medicine_id: Number(item.medicine_id),
+        medicine_name: item.medicine_name,
+        search_count: Number(activity?.recent_searches || 0),
+      };
+    })
+    .filter(item => item.search_count > 0)
+    .sort((a, b) => b.search_count - a.search_count || a.medicine_name.localeCompare(b.medicine_name))
+    .slice(0, 5);
   const expiryRisk = getExpiryRisk(pharmacyId);
   const priceAnalysis = getPriceAnalysis(pharmacyId);
   const dataQuality = getDataQualityIssues(pharmacyId);
@@ -507,6 +538,7 @@ function getInventoryInsights(pharmacyId) {
     summary: stockRisk.summary,
     stock_risk: stockRisk,
     demand_analysis: demandAnalysis,
+    top_searched: topSearched,
     expiry_risk: expiryRisk,
     price_analysis: priceAnalysis,
     data_quality: dataQuality,
