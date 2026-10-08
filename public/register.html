@@ -66,6 +66,12 @@
           <label>Pharmacy Name</label>
           <input type="text" id="pharmacy_name" />
         </div>
+        <div class="field">
+          <label for="pharmacy_logo_input">Pharmacy Logo <span class="muted text-sm">(optional)</span></label>
+          <input type="file" id="pharmacy_logo_input" accept="image/png,image/jpeg,image/webp" />
+          <div class="text-sm muted mt-8" id="pharmacy-logo-name">Upload a PNG, JPG, or WEBP image (max 4MB).</div>
+          <img id="pharmacy-logo-preview" alt="Pharmacy logo preview" style="display:none;max-width:120px;max-height:120px;object-fit:contain;margin-top:10px;" />
+        </div>
         <div class="grid grid-2">
           <div class="field">
             <label>Owner First Name</label>
@@ -118,7 +124,8 @@
 let selectedRole = 'customer';
 let pickedLat = null, pickedLng = null;
 let pickerMap, pickerMarker;
-let businessPermitData = null;
+let businessPermitData = null, pharmacyLogoData = null;
+let businessPermitRead = Promise.resolve(true), pharmacyLogoRead = Promise.resolve(true);
 
 document.getElementById('account-type').addEventListener('click', (e) => {
   const btn = e.target.closest('.account-type-card');
@@ -177,18 +184,55 @@ document.getElementById('password-toggle').addEventListener('click', function ()
 
 document.getElementById('business_permit_input').addEventListener('change', () => {
   const file = document.getElementById('business_permit_input').files[0];
-  if (!file) { businessPermitData = null; return; }
+  businessPermitData = null;
+  if (!file) { businessPermitRead = Promise.resolve(true); return; }
   if (file.size > 4 * 1024 * 1024) {
     toast('Please choose a business permit under 4MB.', 'error');
     document.getElementById('business_permit_input').value = '';
-    businessPermitData = null;
+    businessPermitRead = Promise.resolve(true);
     return;
   }
   const reader = new FileReader();
-  reader.onload = () => {
-    businessPermitData = reader.result;
-    document.getElementById('business-permit-name').textContent = file.name;
-  };
+  businessPermitRead = new Promise(resolve => {
+    reader.onload = () => {
+      businessPermitData = reader.result;
+      document.getElementById('business-permit-name').textContent = file.name;
+      resolve(true);
+    };
+    reader.onerror = () => resolve(false);
+  });
+  reader.readAsDataURL(file);
+});
+
+document.getElementById('pharmacy_logo_input').addEventListener('change', () => {
+  const file = document.getElementById('pharmacy_logo_input').files[0];
+  const preview = document.getElementById('pharmacy-logo-preview');
+  const label = document.getElementById('pharmacy-logo-name');
+  pharmacyLogoData = null;
+  preview.style.display = 'none';
+  preview.removeAttribute('src');
+  if (!file) {
+    pharmacyLogoRead = Promise.resolve(true);
+    label.textContent = 'Upload a PNG, JPG, or WEBP image (max 4MB).';
+    return;
+  }
+  if (file.size > 4 * 1024 * 1024) {
+    toast('Please choose a pharmacy logo under 4MB.', 'error');
+    document.getElementById('pharmacy_logo_input').value = '';
+    pharmacyLogoRead = Promise.resolve(true);
+    return;
+  }
+  const reader = new FileReader();
+  pharmacyLogoRead = new Promise(resolve => {
+    reader.onload = () => {
+      pharmacyLogoData = reader.result;
+      preview.src = pharmacyLogoData;
+      preview.style.display = 'block';
+      label.textContent = file.name;
+      resolve(true);
+    };
+    reader.onerror = () => resolve(false);
+  });
   reader.readAsDataURL(file);
 });
 
@@ -196,6 +240,14 @@ document.getElementById('register-form').addEventListener('submit', async (e) =>
   e.preventDefault();
   const alertBox = document.getElementById('alert-box');
   alertBox.innerHTML = '';
+
+  if (selectedRole === 'pharmacy_staff') {
+    const [permitRead, logoRead] = await Promise.all([businessPermitRead, pharmacyLogoRead]);
+    if (!permitRead || !logoRead) {
+      alertBox.innerHTML = `<div class="alert alert-error">Could not read the selected ${!permitRead ? 'business permit' : 'pharmacy logo'}. Please choose the file again.</div>`;
+      return;
+    }
+  }
 
   const payload = {
     phone: `+63${document.getElementById('phone').value.trim()}`,
@@ -213,6 +265,7 @@ document.getElementById('register-form').addEventListener('submit', async (e) =>
     payload.owner_first_name = document.getElementById('owner_first_name').value.trim();
     payload.owner_last_name = document.getElementById('owner_last_name').value.trim();
     payload.business_permit = businessPermitData;
+    payload.pharmacy_logo = pharmacyLogoData;
     payload.description = document.getElementById('pharmacy_description').value.trim();
     payload.hours = document.getElementById('pharmacy_hours').value.trim();
     if (pickedLat == null || pickedLng == null) {
@@ -230,7 +283,7 @@ document.getElementById('register-form').addEventListener('submit', async (e) =>
       document.getElementById('register-form').style.display = 'none';
       alertBox.innerHTML = `
         <div class="alert alert-success">
-          <strong>Registration Successful!</strong> You can complete your pharmacy contact information and profile at any time. Profile and cover photos are optional.
+          <strong>Registration Successful!</strong> You can complete your pharmacy contact information and profile at any time.
         </div>
         <div class="flex" style="gap:10px;flex-wrap:wrap;">
           <a class="btn btn-primary" href="/profile.html">Set Up Profile</a>

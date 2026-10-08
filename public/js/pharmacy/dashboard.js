@@ -88,6 +88,17 @@
     const paiPrices = paiData.price_analysis?.items || [];
     const paiQuality = paiData.data_quality?.issues || [];
     const paiPerformance = paiData.performance_summary || {};
+    const verificationStatus = data.pharmacy.verification_stage
+      || (data.pharmacy.verification_status === 'VERIFIED' ? 'APPROVED' : data.pharmacy.verification_status || 'PENDING');
+    const verificationLabels = {
+      PENDING: 'Pending verification',
+      UNDER_REVIEW: 'Under review',
+      CORRECTION_REQUIRED: 'Correction required',
+      APPROVED: 'Approved',
+      REJECTED: 'Rejected',
+      SUSPENDED: 'Suspended',
+      REVERIFICATION_REQUIRED: 'Reverification required',
+    };
 
     content.innerHTML = `
       <section class="pharmacy-dashboard-header">
@@ -96,8 +107,14 @@
           <h2>${escapeHtml(data.pharmacy.name)}</h2>
           <p>${escapeHtml(data.pharmacy.address)}</p>
         </div>
-        <span class="badge ${data.pharmacy.verification_status === 'VERIFIED' ? 'badge-verified' : 'badge-unverified'}">${data.pharmacy.verification_status === 'VERIFIED' ? 'Verified pharmacy' : data.pharmacy.verification_status === 'SUSPENDED' ? 'Suspended' : data.pharmacy.verification_status === 'REJECTED' ? 'Rejected' : 'Verification pending'}</span>
+        <span class="badge ${verificationStatus === 'APPROVED' ? 'badge-verified' : ['SUSPENDED', 'REJECTED', 'CORRECTION_REQUIRED'].includes(verificationStatus) ? 'badge-warning' : 'badge-unverified'}">${escapeHtml(verificationLabels[verificationStatus] || verificationStatus)}</span>
       </section>
+      ${['CORRECTION_REQUIRED', 'REVERIFICATION_REQUIRED'].includes(verificationStatus) ? `
+        <section class="alert alert-warning mt-16">
+          <strong>${escapeHtml(verificationLabels[verificationStatus])}</strong>
+          <p class="mt-8">${escapeHtml(data.pharmacy.correction_reason || 'Please review your latest notification, update your Pharmacy Profile, and resubmit for verification.')}</p>
+          <a class="btn btn-primary btn-sm mt-12" href="/profile.html">Review and resubmit</a>
+        </section>` : ''}
 
       <section class="card dashboard-deployed-widget mt-16" aria-label="Deployed folder">
         <div class="dashboard-deployed-content">

@@ -24,20 +24,125 @@
       }))
     ]);
     content.innerHTML = `
-      <div class="grid grid-4">
-        <div class="card stat-card"><div class="stat-icon">&#127974;</div><div class="stat-label">Pharmacies</div><div class="stat-value">${data.totals.pharmacies}</div></div>
-        <div class="card stat-card"><div class="stat-icon">&#9989;</div><div class="stat-label">Verified Pharmacies</div><div class="stat-value">${data.totals.verifiedPharmacies}</div></div>
-        <div class="card stat-card"><div class="stat-icon">&#128100;</div><div class="stat-label">Customers</div><div class="stat-value">${data.totals.customers}</div></div>
-        <div class="card stat-card"><div class="stat-icon">&#128203;</div><div class="stat-label">Total Reservations</div><div class="stat-value">${data.totals.reservations}</div></div>
-      </div>
-      <div class="grid grid-4 mt-24">
-        <div class="card stat-card"><div class="stat-icon">&#9203;</div><div class="stat-label">Pending Reservations</div><div class="stat-value">${data.stats.pendingReservations}</div></div>
-        <div class="card stat-card"><div class="stat-icon">&#128683;</div><div class="stat-label">Pending Pharmacies</div><div class="stat-value">${data.totals.pendingPharmacies}</div></div>
-        <div class="card stat-card"><div class="stat-icon">&#9888;</div><div class="stat-label">Low Stock Alerts</div><div class="stat-value">${data.stats.lowStockAlerts}</div></div>
-        <div class="card stat-card"><div class="stat-icon">&#128176;</div><div class="stat-label">System Inventory Value</div><div class="stat-value">${money(data.stats.totalInventoryValue)}</div></div>
-      </div>
+      <section class="mt-8" aria-labelledby="action-required-title">
+        <div class="flex justify-between items-center">
+          <div><h2 id="action-required-title">Action Required</h2><p class="text-sm muted mt-8">Items based on current pharmacy, inventory, reservation, and P.A.I. records.</p></div>
+        </div>
+        <div class="grid mt-16" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;">
+          <article class="card">
+            <div class="flex justify-between items-center"><strong>Pending pharmacy verification</strong><span class="badge badge-unverified">${data.actionRequired.pendingPharmacies.length}</span></div>
+            ${data.actionRequired.pendingPharmacies.length
+              ? `<ul class="mt-12">${data.actionRequired.pendingPharmacies.slice(0,5).map(pharmacy => `<li><strong>${escapeHtml(pharmacy.name)}</strong><span class="text-sm muted"> · ${escapeHtml(pharmacy.address)}</span></li>`).join('')}</ul>`
+              : '<p class="text-sm muted mt-12">No pharmacies are awaiting verification.</p>'}
+            <a class="btn btn-outline btn-sm mt-12" href="/admin/pharmacies.html">View pending pharmacies</a>
+          </article>
+          <article class="card">
+            <div class="flex justify-between items-center"><strong>Pharmacies requiring correction</strong><span class="badge badge-warning">${data.actionRequired.pharmaciesRequiringCorrection.length}</span></div>
+            ${data.actionRequired.pharmaciesRequiringCorrection.length
+              ? `<ul class="mt-12">${data.actionRequired.pharmaciesRequiringCorrection.slice(0,5).map(pharmacy => `<li><strong>${escapeHtml(pharmacy.name)}</strong>${pharmacy.rejection_reason ? `<div class="text-sm muted">${escapeHtml(pharmacy.rejection_reason)}</div>` : ''}</li>`).join('')}</ul>`
+              : '<p class="text-sm muted mt-12">No rejected pharmacy submissions require correction.</p>'}
+            <a class="btn btn-outline btn-sm mt-12" href="/admin/pharmacies.html">View pharmacies</a>
+          </article>
+          <article class="card">
+            <div class="flex justify-between items-center"><strong>Pharmacy document expiry</strong><span class="badge badge-warning">Not tracked</span></div>
+            <p class="text-sm muted mt-12">The registration form and database do not record pharmacy permit expiry dates, so expiring pharmacy documents cannot be identified.</p>
+            <a class="btn btn-outline btn-sm mt-12" href="/admin/pharmacies.html">View pharmacy documents</a>
+          </article>
+          <article class="card">
+            <div class="flex justify-between items-center"><strong>Low-stock medicines</strong><span class="badge badge-low">${data.stats.lowStockAlerts}</span></div>
+            ${data.actionRequired.lowStockItems.length
+              ? `<ul class="mt-12">${data.actionRequired.lowStockItems.slice(0,5).map(item => `<li><strong>${escapeHtml(item.medicine_name)}</strong><span class="text-sm muted"> · ${escapeHtml(item.pharmacy_name)} (${item.stock_quantity}/${item.low_stock_threshold})</span></li>`).join('')}</ul>`
+              : '<p class="text-sm muted mt-12">No verified pharmacy listing is below its configured stock threshold.</p>'}
+            <a class="btn btn-outline btn-sm mt-12" href="/admin/inventory.html">View low stock</a>
+          </article>
+          <article class="card">
+            <div class="flex justify-between items-center"><strong>System supply risks</strong><span class="badge badge-warning">${paiData.unavailable ? '—' : Number(paiData.summary?.demand_supply_gaps || 0) + ' signals'}</span></div>
+            ${paiData.unavailable
+              ? `<p class="text-sm muted mt-12">P.A.I. supply risk signals unavailable: ${escapeHtml(paiData.error)}</p>`
+              : (paiData.demand_supply_gaps || []).length
+                ? `<ul class="mt-12">${paiData.demand_supply_gaps.slice(0,5).map(item => `<li><strong>${escapeHtml(item.medicine_name)}</strong><div class="text-sm muted">${escapeHtml(item.evidence)}</div></li>`).join('')}</ul>`
+                : '<p class="text-sm muted mt-12">No demand/supply signal met the current P.A.I. criteria.</p>'}
+            <a class="btn btn-outline btn-sm mt-12" href="/admin/shortages.html">View supply risks</a>
+          </article>
+          <article class="card">
+            <div class="flex justify-between items-center"><strong>Suspicious activity review</strong><span class="badge badge-warning">${paiData.unavailable ? '—' : (paiData.anomalies || []).length + (paiData.price_anomalies || []).length}</span></div>
+            ${paiData.unavailable
+              ? `<p class="text-sm muted mt-12">Review signals unavailable: ${escapeHtml(paiData.error)}</p>`
+              : (paiData.anomalies || []).length || (paiData.price_anomalies || []).length
+                ? `<ul class="mt-12">${[...(paiData.anomalies || []), ...(paiData.price_anomalies || [])].slice(0,5).map(item => `<li><strong>${escapeHtml(item.subject || `${item.medicine_name} · ${item.pharmacy_name}`)}</strong><div class="text-sm muted">${escapeHtml(item.evidence)}</div></li>`).join('')}</ul><p class="text-sm muted mt-8">Review signals are not evidence of misconduct.</p>`
+                : '<p class="text-sm muted mt-12">No unusual activity met the current review thresholds.</p>'}
+            <a class="btn btn-outline btn-sm mt-12" href="#pai-insights">View P.A.I. findings</a>
+          </article>
+          <article class="card">
+            <div class="flex justify-between items-center"><strong>Customer/account issues</strong><span class="badge badge-available">Not tracked</span></div>
+            <p class="text-sm muted mt-12">PillPoint does not currently record customer account flags or support cases. No issue count is inferred.</p>
+            <a class="btn btn-outline btn-sm mt-12" href="#pai-insights">View P.A.I. findings</a>
+          </article>
+          <article class="card">
+            <div class="flex justify-between items-center"><strong>Expiring medicine batches</strong><span class="badge badge-warning">${data.stats.expiringSoon}</span></div>
+            ${data.actionRequired.expiringMedicineBatches.length
+              ? `<ul class="mt-12">${data.actionRequired.expiringMedicineBatches.slice(0,5).map(batch => `<li><strong>${escapeHtml(batch.medicine_name)}</strong><span class="text-sm muted"> · ${escapeHtml(batch.pharmacy_name)} · ${escapeHtml(batch.expiration_date)}</span></li>`).join('')}</ul>`
+              : '<p class="text-sm muted mt-12">No active verified-pharmacy batch expires within 30 days.</p>'}
+            <a class="btn btn-outline btn-sm mt-12" href="/admin/inventory.html">View inventory</a>
+          </article>
+        </div>
+      </section>
+
+      <section class="mt-24" aria-labelledby="system-overview-title">
+        <h2 id="system-overview-title">System Overview</h2>
+        <div class="grid grid-4 mt-16">
+          <article class="card stat-card"><div class="stat-icon">&#128100;</div><div class="stat-label">Total Customers</div><div class="stat-value">${data.totals.customers}</div><a class="btn btn-outline btn-sm mt-12" href="#pai-insights">View P.A.I. activity</a></article>
+          <article class="card stat-card"><div class="stat-icon">&#128101;</div><div class="stat-label">Active Customers (30 days)</div><div class="stat-value">${data.systemOverview.activeCustomers}</div><a class="btn btn-outline btn-sm mt-12" href="#pai-insights">View P.A.I. activity</a></article>
+          <article class="card stat-card"><div class="stat-icon">&#9989;</div><div class="stat-label">Verified Pharmacies</div><div class="stat-value">${data.totals.verifiedPharmacies}</div><a class="btn btn-outline btn-sm mt-12" href="/admin/pharmacies.html">View</a></article>
+          <article class="card stat-card"><div class="stat-icon">&#9203;</div><div class="stat-label">Pending Pharmacies</div><div class="stat-value">${data.totals.pendingPharmacies}</div><a class="btn btn-outline btn-sm mt-12" href="/admin/pharmacies.html">View</a></article>
+          <article class="card stat-card"><div class="stat-icon">&#128230;</div><div class="stat-label">Active Products</div><div class="stat-value">${data.systemOverview.activeProducts}</div><a class="btn btn-outline btn-sm mt-12" href="/admin/inventory.html">View</a></article>
+          <article class="card stat-card"><div class="stat-icon">&#128203;</div><div class="stat-label">Reservations</div><div class="stat-value">${data.totals.reservations}</div><a class="btn btn-outline btn-sm mt-12" href="#reservations-by-status">View status</a></article>
+          <article class="card stat-card"><div class="stat-icon">&#128722;</div><div class="stat-label">System Inventory (units)</div><div class="stat-value">${data.systemOverview.inventoryUnits}</div><a class="btn btn-outline btn-sm mt-12" href="/admin/inventory.html">View</a></article>
+          <article class="card stat-card"><div class="stat-icon">&#9203;</div><div class="stat-label">Pending Reservations</div><div class="stat-value">${data.stats.pendingReservations}</div><a class="btn btn-outline btn-sm mt-12" href="#reservations-by-status">View status</a></article>
+        </div>
+      </section>
+
+      <section class="mt-24" aria-labelledby="system-health-title">
+        <h2 id="system-health-title">System Health</h2>
+        <div class="grid mt-16" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;">
+          <article class="card">
+            <div class="flex justify-between items-center"><strong>Inventory integrity</strong><span class="badge ${data.inventoryIntegrity.batchQuantityMismatches + data.inventoryIntegrity.activeBatchesMissingExpiry + data.inventoryIntegrity.expiredBatchesWithStock ? 'badge-warning' : 'badge-available'}">${data.inventoryIntegrity.batchQuantityMismatches + data.inventoryIntegrity.activeBatchesMissingExpiry + data.inventoryIntegrity.expiredBatchesWithStock} issues</span></div>
+            <p class="text-sm muted mt-12">Batch/listing quantity mismatches: ${data.inventoryIntegrity.batchQuantityMismatches}; active batches missing expiry dates: ${data.inventoryIntegrity.activeBatchesMissingExpiry}; expired batches still carrying stock: ${data.inventoryIntegrity.expiredBatchesWithStock}.</p>
+            <a class="btn btn-outline btn-sm mt-12" href="/admin/inventory.html">View inventory</a>
+          </article>
+          <article class="card">
+            <div class="flex justify-between items-center"><strong>Pharmacy participation</strong><span class="badge badge-warning">${paiData.unavailable ? '—' : Number(paiData.summary?.pharmacies_with_risk || 0)}</span></div>
+            ${paiData.unavailable
+              ? `<p class="text-sm muted mt-12">Participation data unavailable: ${escapeHtml(paiData.error)}</p>`
+              : `<p class="text-sm muted mt-12">${Number(paiData.pharmacy_participation?.summary?.verified || 0)} verified branches · ${Number(paiData.pharmacy_participation?.summary?.stale_inventory || 0)} with stale inventory · ${Number(paiData.pharmacy_participation?.summary?.low_activity || 0)} with low activity (30 days).</p>`}
+            <a class="btn btn-outline btn-sm mt-12" href="/admin/pharmacies.html">View pharmacies</a>
+          </article>
+          <article class="card">
+            <div class="flex justify-between items-center"><strong>Supply risk</strong><span class="badge badge-warning">${data.shortageCount}</span></div>
+            <p class="text-sm muted mt-12">${data.shortageCount} catalog medicines currently have no stock across verified pharmacies.</p>
+            <a class="btn btn-outline btn-sm mt-12" href="/admin/shortages.html">View supply risk</a>
+          </article>
+          <article class="card">
+            <div class="flex justify-between items-center"><strong>Recent anomalies</strong><span class="badge badge-warning">${paiData.unavailable ? '—' : (paiData.anomalies || []).length}</span></div>
+            ${paiData.unavailable
+              ? `<p class="text-sm muted mt-12">${escapeHtml(paiData.error)}</p>`
+              : (paiData.anomalies || []).length
+                ? `<ul class="mt-12">${paiData.anomalies.slice(0,5).map(item => `<li><strong>${escapeHtml(item.subject)}</strong><div class="text-sm muted">${escapeHtml(item.evidence)}</div></li>`).join('')}</ul>`
+                : '<p class="text-sm muted mt-12">No anomaly met the current review thresholds.</p>'}
+            <a class="btn btn-outline btn-sm mt-12" href="/admin/audit-logs.html">View audit activity</a>
+          </article>
+          <article class="card">
+            <div class="flex justify-between items-center"><strong>Recent audit activity</strong><span class="badge badge-available">${data.recentActivity.length}</span></div>
+            ${data.recentActivity.length
+              ? `<ul class="mt-12">${data.recentActivity.slice(0,5).map(item => `<li><strong>${escapeHtml(item.action)}</strong><div class="text-sm muted">${escapeHtml(item.target_name || item.target_type || 'System')} · ${escapeHtml(item.created_at)}</div></li>`).join('')}</ul>`
+              : '<p class="text-sm muted mt-12">No administrative actions have been recorded.</p>'}
+            <a class="btn btn-outline btn-sm mt-12" href="/admin/audit-logs.html">View audit log</a>
+          </article>
+        </div>
+      </section>
 
       <div class="card mt-24">
+        <div id="pai-insights"></div>
         <div class="card-title">P.A.I. Admin Insights</div>
         <div class="text-sm muted">Database-backed signals using existing searches, reservations, inventory, transactions, batches and pharmacy records. Every finding includes its evidence and reasoning.</div>
         ${paiData.unavailable
@@ -92,7 +197,7 @@
       </div>
 
       <div class="grid mt-24" style="grid-template-columns: 1fr 1.3fr; gap:18px;">
-        <div class="card">
+        <div class="card" id="reservations-by-status">
           <div class="card-title">Reservations by Status</div>
           ${data.reservationsByStatus.length
             ? pieChart3D(data.reservationsByStatus.map(s => ({ label: s.status, value: s.count })))

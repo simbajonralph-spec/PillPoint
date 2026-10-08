@@ -92,6 +92,18 @@
       return;
     }
     const p = data.pharmacy;
+    const verificationStatus = p.verification_stage || (p.verification_status === 'VERIFIED' ? 'APPROVED' : p.verification_status || 'PENDING');
+    const statusLabels = {
+      PENDING: 'Pending verification',
+      UNDER_REVIEW: 'Under review',
+      CORRECTION_REQUIRED: 'Correction required',
+      APPROVED: 'Approved',
+      REJECTED: 'Rejected',
+      SUSPENDED: 'Suspended',
+      REVERIFICATION_REQUIRED: 'Reverification required',
+    };
+    let businessPermitData = null;
+    let permitRead = Promise.resolve();
     let pickedLat = p.latitude, pickedLng = p.longitude;
     let profileImageData = p.profile_image || p.store_image || null;
     let coverImageData = p.cover_image || null;
@@ -113,11 +125,18 @@
             </div>
             <div>
               <h2>${escapeHtml(p.name)}</h2>
-              <div>${(p.verification_status || (p.verified ? 'VERIFIED' : 'PENDING')) === 'VERIFIED' ? '<span class="badge badge-verified">Verified</span>' : '<span class="badge badge-unverified">Pending verification</span>'}</div>
+              <div><span class="badge ${verificationStatus === 'APPROVED' ? 'badge-verified' : ['SUSPENDED', 'REJECTED', 'CORRECTION_REQUIRED'].includes(verificationStatus) ? 'badge-warning' : 'badge-unverified'}">${escapeHtml(statusLabels[verificationStatus] || verificationStatus)}</span></div>
             </div>
             <div class="pharmacy-settings-rating"><strong>★ ${averageRating}</strong><span>${data.reviews.length} review${data.reviews.length === 1 ? '' : 's'}</span></div>
           </div>
         </section>
+        ${['CORRECTION_REQUIRED', 'REVERIFICATION_REQUIRED'].includes(verificationStatus) ? `
+          <section class="alert alert-warning mt-16" role="status">
+            <strong>${statusLabels[verificationStatus]}</strong>
+            <p class="mt-8">${escapeHtml(p.correction_reason || p.verification_reason || 'Update your pharmacy information and documents before resubmitting.')}</p>
+            <p class="text-sm mt-8">Save corrected information below, then submit your registration for review again.</p>
+            <button type="button" class="btn btn-primary btn-sm mt-12" id="resubmit-verification">Submit for Review</button>
+          </section>` : ''}
         <section class="card mt-16">
           <div class="card-title">Pharmacy Identity</div>
           <div class="field"><label for="pharmacy-name-input">Pharmacy Name</label><input id="pharmacy-name-input" value="${escapeHtml(p.name)}" required /></div>
@@ -155,6 +174,11 @@
           <div class="field"><label>Description</label><textarea id="description-input" rows="3">${escapeHtml(p.description || '')}</textarea></div>
           <div class="grid grid-2">
             <div class="field"><label>Operating Hours</label><input id="hours-input" value="${escapeHtml(p.hours || '')}" placeholder="e.g. Mon-Sat: 8AM-9PM" /></div>
+          </div>
+          <div class="field">
+            <label for="business-permit-input">Business Permit</label>
+            <input id="business-permit-input" type="file" accept="application/pdf,image/png,image/jpeg,image/webp" />
+            <div class="text-sm muted mt-8" id="business-permit-status">${p.has_business_permit ? 'A permit is on file. Choose a new file only if replacing it.' : 'No business permit is on file. Upload a PDF, PNG, JPG, or WEBP file (max 4MB).'}</div>
           </div>
           <div class="field">
             <label>Location <span class="muted text-sm">(click the map to update your pin)</span></label>
@@ -203,6 +227,31 @@
     }
     bindImagePreview('profile-image-input', 'profile-preview', image => { profileImageData = image; }, avatarFallback);
     bindImagePreview('cover-image-input', 'cover-preview', image => { coverImageData = image; }, coverFallback);
+    document.getElementById('business-permit-input').addEventListener('change', () => {
+      const input = document.getElementById('business-permit-input');
+      const file = input.files[0];
+      if (!file) return;
+      if (file.size > 4 * 1024 * 1024) {
+        input.value = '';
+        toast('Please choose a business permit under 4MB.', 'error');
+        return;
+      }
+      if (!['application/pdf', 'image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+        input.value = '';
+        toast('Business permit must be a PDF, PNG, JPG, or WEBP file.', 'error');
+        return;
+      }
+      permitRead = new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          businessPermitData = reader.result;
+          document.getElementById('business-permit-status').textContent = `Selected: ${file.name}. Save Changes to upload it.`;
+          resolve();
+        };
+        reader.onerror = () => reject(new Error('Could not read the selected business permit. Please choose the file again.'));
+        reader.readAsDataURL(file);
+      });
+    });
     document.getElementById('clear-profile-image').addEventListener('click', () => {
       profileImageData = null;
       document.getElementById('profile-image-input').value = '';
@@ -231,7 +280,8 @@
 
     document.getElementById('save-btn').addEventListener('click', async () => {
       try {
-        const saved = await Api.put('/api/pharmacy/profile', {
+        await permitRead;
+        const payload = {
           name: document.getElementById('pharmacy-name-input').value.trim(),
           phone: document.getElementById('phone-input').value.trim(),
           business_email: document.getElementById('business-email-input').value.trim(),
@@ -244,7 +294,15 @@
           hours: document.getElementById('hours-input').value.trim(),
           owner_first_name: document.getElementById('owner-first-name-input').value.trim(),
           owner_last_name: document.getElementById('owner-last-name-input').value.trim(),
-        });
+        };
+        if (businessPermitData !== null) payload.business_permit = businessPermitData;
+        const saved = await Api.put('/api/pharmacy/profile', payload);
+        businessPermitData = null;
+        permitRead = Promise.resolve();
+        p.has_business_permit = Boolean(saved.pharmacy.business_permit);
+        document.getElementById('business-permit-status').textContent = p.has_business_permit
+          ? 'A permit is on file. Choose a new file only if replacing it.'
+          : 'No business permit is on file. Upload a PDF, PNG, JPG, or WEBP file (max 4MB).';
         const pharmacyName = document.getElementById('pharmacy-name-input').value.trim();
         p.name = pharmacyName;
         p.profile_image = saved.pharmacy.profile_image;
@@ -265,6 +323,17 @@
         const sidebarName = document.querySelector('.sidebar .user-name');
         if (sidebarName) sidebarName.textContent = pharmacyName;
         toast('Profile updated.');
+      } catch (err) {
+        toast(err.message, 'error');
+      }
+    });
+
+    const resubmitButton = document.getElementById('resubmit-verification');
+    if (resubmitButton) resubmitButton.addEventListener('click', async () => {
+      try {
+        await Api.post('/api/pharmacy/verification/resubmit', {});
+        toast('Registration submitted for review.');
+        await renderPharmacyProfile();
       } catch (err) {
         toast(err.message, 'error');
       }

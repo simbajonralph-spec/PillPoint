@@ -12,7 +12,10 @@ function myPharmacyId(req) {
 // GET /api/pharmacy/dashboard
 router.get('/dashboard', (req, res) => {
   const pid = myPharmacyId(req);
-  const pharmacy = db.prepare('SELECT id, name, address, verified FROM pharmacies WHERE id = ?').get(pid);
+  const pharmacy = db.prepare(`
+    SELECT id, name, address, verified, verification_status, verification_stage, correction_reason
+    FROM pharmacies WHERE id = ?
+  `).get(pid);
   const lowStock = db.prepare(`
     SELECT COUNT(*) AS count FROM inventory WHERE pharmacy_id = ? AND stock_quantity > 0 AND stock_quantity <= low_stock_threshold
   `).get(pid);
@@ -781,7 +784,15 @@ router.get('/analytics', (req, res) => {
 
 // GET /api/pharmacy/profile — pharmacy record linked to this staff account's registration info
 router.get('/profile', (req, res) => {
-  const pharmacy = db.prepare('SELECT * FROM pharmacies WHERE id = ?').get(myPharmacyId(req));
+  const pharmacy = db.prepare(`
+    SELECT id, name, address, latitude, longitude, phone, business_email,
+      owner_first_name, owner_last_name, description, hours, profile_image,
+      cover_image, store_image, verified, verification_status, verification_stage,
+      correction_reason, verification_reason, rejection_reason, suspension_reason,
+      status_updated_at,
+      (business_permit IS NOT NULL AND business_permit != '') AS has_business_permit
+    FROM pharmacies WHERE id = ?
+  `).get(myPharmacyId(req));
   const counts = db.prepare(`
     SELECT rating, COUNT(*) AS count FROM pharmacy_ratings
     WHERE pharmacy_id = ? GROUP BY rating
@@ -801,7 +812,7 @@ router.get('/profile', (req, res) => {
 // PUT /api/pharmacy/profile — update pharmacy information and its public images.
 router.put('/profile', (req, res) => {
   const pid = myPharmacyId(req);
-  const { name, phone, business_email, address, latitude, longitude, profile_image, cover_image, description, hours, owner_first_name, owner_last_name } = req.body;
+  const { name, phone, business_email, address, latitude, longitude, profile_image, cover_image, description, hours, owner_first_name, owner_last_name, business_permit } = req.body;
   const pharmacyName = typeof name === 'string' ? name.trim() : undefined;
   const businessEmail = typeof business_email === 'string' ? business_email.trim() : undefined;
 
@@ -817,13 +828,16 @@ router.put('/profile', (req, res) => {
       return res.status(422).json({ error: 'Pharmacy photos must be PNG, JPG, or WEBP images.' });
     }
   }
+  if (business_permit && !/^data:(application\/pdf|image\/(png|jpeg|webp));base64,[A-Za-z0-9+/]+={0,2}$/.test(business_permit)) {
+    return res.status(422).json({ error: 'Business permit must be a PDF, PNG, JPG, or WEBP file.' });
+  }
 
   const tx = db.transaction(() => {
     const pharmacy = db.prepare('SELECT * FROM pharmacies WHERE id = ?').get(pid);
     const lat = latitude != null && latitude !== '' ? parseFloat(latitude) : pharmacy.latitude;
     const lng = longitude != null && longitude !== '' ? parseFloat(longitude) : pharmacy.longitude;
     db.prepare(`
-      UPDATE pharmacies SET name = ?, phone = ?, business_email = ?, address = ?, latitude = ?, longitude = ?, profile_image = ?, store_image = ?, cover_image = ?, description = ?, hours = ?, owner_first_name = ?, owner_last_name = ? WHERE id = ?
+      UPDATE pharmacies SET name = ?, phone = ?, business_email = ?, address = ?, latitude = ?, longitude = ?, profile_image = ?, store_image = ?, cover_image = ?, description = ?, hours = ?, owner_first_name = ?, owner_last_name = ?, business_permit = ? WHERE id = ?
     `).run(
       pharmacyName !== undefined ? pharmacyName : pharmacy.name,
       phone !== undefined ? ((phone || '').trim() || null) : pharmacy.phone,
@@ -838,6 +852,7 @@ router.put('/profile', (req, res) => {
       hours !== undefined ? ((hours || '').trim() || null) : pharmacy.hours,
       owner_first_name !== undefined ? ((owner_first_name || '').trim() || null) : pharmacy.owner_first_name,
       owner_last_name !== undefined ? ((owner_last_name || '').trim() || null) : pharmacy.owner_last_name,
+      business_permit !== undefined ? business_permit : pharmacy.business_permit,
       pid
     );
     if (pharmacyName !== undefined) {
@@ -849,6 +864,52 @@ router.put('/profile', (req, res) => {
 
   const pharmacy = db.prepare('SELECT * FROM pharmacies WHERE id = ?').get(pid);
   res.json({ user: req.session.user, pharmacy });
+});
+
+router.post('/verification/resubmit', (req, res) => {
+  const pharmacy = db.prepare('SELECT * FROM pharmacies WHERE id = ?').get(myPharmacyId(req));
+  if (!pharmacy) return res.status(404).json({ error: 'Pharmacy registration not found.' });
+  if (!['CORRECTION_REQUIRED', 'REVERIFICATION_REQUIRED'].includes(pharmacy.verification_stage)) {
+    return res.status(409).json({ error: 'This pharmacy does not currently have a registration correction or reverification request.' });
+  }
+  if (!pharmacy.name || !pharmacy.address || !pharmacy.owner_first_name || !pharmacy.owner_last_name || !pharmacy.business_permit) {
+    return res.status(422).json({ error: 'Complete the required pharmacy name, address, owner information, and business permit before resubmitting.' });
+  }
+
+  const previousStatus = pharmacy.verification_stage;
+  const now = new Date().toISOString();
+  const actor = req.session.user;
+  const actorName = actor.name || actor.username || `User ${actor.id}`;
+  const note = typeof req.body?.reason === 'string' ? req.body.reason.trim() : '';
+  const admins = db.prepare("SELECT id FROM users WHERE role = 'admin'").all();
+  const saveResubmission = db.transaction(() => {
+    db.prepare(`
+      UPDATE pharmacies
+      SET verification_stage = 'UNDER_REVIEW',
+          verification_status = 'PENDING',
+          verified = 0,
+          correction_reason = NULL,
+          rejection_reason = NULL,
+          status_updated_at = ?
+      WHERE id = ?
+    `).run(now, pharmacy.id);
+    db.prepare(`
+      INSERT INTO pharmacy_verification_history (
+        pharmacy_id, actor_user_id, actor_name, actor_role, action,
+        previous_status, new_status, reason, created_at
+      ) VALUES (?, ?, ?, 'pharmacy_staff', 'CORRECTION SUBMITTED', ?, 'UNDER_REVIEW', ?, ?)
+    `).run(pharmacy.id, actor.id, actorName, previousStatus, note || null, now);
+    const insertNotification = db.prepare(`
+      INSERT INTO notifications (user_id, title, message, type)
+      VALUES (?, 'Pharmacy registration resubmitted', ?, 'admin')
+    `);
+    admins.forEach(admin => insertNotification.run(
+      admin.id,
+      `${pharmacy.name} resubmitted its registration for review.`,
+    ));
+  });
+  saveResubmission();
+  res.json({ ok: true, status: 'UNDER_REVIEW', adminsNotified: admins.length });
 });
 
 // GET /api/pharmacy/reservations
