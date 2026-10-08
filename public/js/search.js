@@ -103,7 +103,9 @@
         <table>
           <thead><tr><th>Medicine</th><th>Pharmacy</th><th>Brand</th><th>Price</th><th>Stock</th><th>Status</th><th></th></tr></thead>
           <tbody>
-            ${data.results.map(r => `
+            ${data.results.map(r => {
+              const available = Number(r.available_quantity ?? r.available_stock ?? r.stock_quantity);
+              return `
               <tr>
                 <td>
                   <div style="font-weight:600">${escapeHtml(r.medicine_name)}</div>
@@ -120,19 +122,21 @@
                 <td class="text-sm muted">${escapeHtml(r.brand || '—')}</td>
                 <td>${money(r.price)}</td>
                 <td>
-                  <div>${Number(r.available_stock)} available</div>
+                  <div>${available} available</div>
                   <div class="text-sm muted">${Number(r.stock_quantity)} physical · ${Number(r.reserved_quantity)} reserved</div>
                 </td>
-                <td>${stockBadge(r.available_stock, r.low_stock_threshold)}</td>
+                <td>${stockBadge(available, r.low_stock_threshold)}</td>
                 <td>
-                  <button class="btn btn-primary btn-sm reserve-btn"data-max="${r.available_stock}"
-                    data-id="${r.inventory_id}" data-debug-inventory="${r.inventory_id}" data-name="${escapeHtml(r.medicine_name)}" 
+                  <button class="btn btn-primary btn-sm reserve-btn"
+                    data-max="${available}" data-id="${r.inventory_id}" data-debug-inventory="${r.inventory_id}"
+                    data-name="${escapeHtml(r.medicine_name)}"
                     data-pharmacy="${escapeHtml(r.pharmacy_name)}" data-price="${r.price}"
-                    ${r.available_stock === 0 ? 'disabled' : ''}>
+                    ${available <= 0 ? 'disabled' : ''}>
                     Reserve
                   </button>
                 </td>
-              </tr>`).join('')}
+              </tr>`;
+            }).join('')}
           </tbody>
         </table>
       `;
@@ -372,7 +376,7 @@
         </div>
         <div style="font-size:12px;color:#64748B;">${escapeHtml(r.address)}</div>
         ${dist ? `<div style="font-size:12px;font-weight:600;color:#0F766E;margin-top:4px;">${dist}</div>` : ''}
-        <div style="font-size:12px;margin-top:4px;">${escapeHtml(r.medicine_name)}: <strong>${money(r.price)}</strong> (${r.available_stock} available)</div>
+        <div style="font-size:12px;margin-top:4px;">${escapeHtml(r.medicine_name)}: <strong>${money(r.price)}</strong> (${Number(r.available_quantity ?? r.available_stock ?? r.stock_quantity)} available)</div>
         <a href="/pharmacy-profile.html?id=${r.pharmacy_id}" style="display:inline-block;margin-top:8px;font-size:12px;font-weight:700;color:#14B8A6;">View Profile &rarr;</a>
       </div>
     `;

@@ -1,4 +1,5 @@
 const db = require('../../db/database');
+const { eligibleBatchQuantitySql, publishedProductSql } = require('../inventory-batches');
 const { buildMedicineCandidates, normalizeText, searchVerifiedInventory } = require('./search');
 const { PaiUnavailableError, requestJsonCompletion } = require('./openai');
 
@@ -229,6 +230,7 @@ async function searchWithIntent(text, userId, intent) {
       stock_quantity: row.stock_quantity,
       reserved_quantity: row.reserved_quantity,
       available_stock: row.available_stock,
+      available_quantity: row.available_quantity,
       address: row.address,
     })),
   };
@@ -332,7 +334,8 @@ async function handleCustomerMessage(message, options = {}) {
       medicine: row.medicine_name,
       pharmacy: row.pharmacy_name,
       price: row.price,
-      stock_quantity: row.stock_quantity,
+      stock_quantity: row.available_quantity,
+      available_quantity: row.available_quantity,
     }));
     reservation.message = await generateGroundedMessage(
       'Show reservation options and remind the user a reservation is created only after their explicit confirmation.',
@@ -438,9 +441,16 @@ function createAvailabilityWatch(customerId, medicineId, pharmacyId = null) {
   }
 
   const matchingListings = db.prepare(`
-    SELECT i.id, i.price, i.stock_quantity, p.id AS pharmacy_id, p.name AS pharmacy_name
-    FROM inventory i JOIN pharmacies p ON p.id = i.pharmacy_id
-    WHERE i.medicine_id = ? AND i.deployed = 1 AND i.stock_quantity > 0
+    SELECT i.id, i.price, i.stock_quantity,
+      MAX(0, MIN(i.stock_quantity, ${eligibleBatchQuantitySql('i')}) -
+        COALESCE((SELECT SUM(r.quantity) FROM reservations r WHERE r.inventory_id = i.id AND r.status IN ('pending','confirmed','ready_for_pickup')), 0)) AS available_quantity,
+      p.id AS pharmacy_id, p.name AS pharmacy_name
+    FROM inventory i
+    JOIN medicines m ON m.id = i.medicine_id
+    JOIN pharmacies p ON p.id = i.pharmacy_id
+    WHERE i.medicine_id = ? AND ${publishedProductSql('i', 'm')}
+      AND MIN(i.stock_quantity, ${eligibleBatchQuantitySql('i')}) >
+        COALESCE((SELECT SUM(r.quantity) FROM reservations r WHERE r.inventory_id = i.id AND r.status IN ('pending','confirmed','ready_for_pickup')), 0)
       AND COALESCE(p.verification_status, CASE WHEN p.verified = 1 THEN 'VERIFIED' ELSE 'PENDING' END) = 'VERIFIED'
       AND (? IS NULL OR p.id = ?)
     ORDER BY i.price ASC

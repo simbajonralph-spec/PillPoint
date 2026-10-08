@@ -42,6 +42,19 @@ test('reservation lifecycle synchronizes stock and serializes competing reservat
       INSERT INTO inventory (pharmacy_id, medicine_id, price, stock_quantity, low_stock_threshold, deployed)
       VALUES (?, ?, 12.34, ?, 2, 1)
     `).run(staff.pharmacy_id, medicine.lastInsertRowid, stock);
+    db.prepare(`
+      INSERT INTO medicine_batches (
+        pharmacy_id, medicine_id, inventory_id, batch_number,
+        expiration_date, quantity_received, current_quantity, status
+      ) VALUES (?, ?, ?, ?, date('now','localtime','+365 days'), ?, ?, 'active')
+    `).run(
+      staff.pharmacy_id,
+      medicine.lastInsertRowid,
+      inventory.lastInsertRowid,
+      `U06-RESERVATION-${inventory.lastInsertRowid}`,
+      stock,
+      stock
+    );
     return { medicineId: Number(medicine.lastInsertRowid), inventoryId: Number(inventory.lastInsertRowid) };
   });
   const lifecycle = createInventory(lifecycleName, 25);
@@ -70,6 +83,7 @@ test('reservation lifecycle synchronizes stock and serializes competing reservat
       db.prepare('DELETE FROM notifications WHERE message LIKE ? OR message LIKE ?')
         .run(`%${lifecycleName}%`, `%${concurrencyName}%`);
       db.prepare('DELETE FROM search_logs WHERE user_id = ? AND query = ?').run(customer.id, lifecycleName);
+      db.prepare('DELETE FROM medicine_batches WHERE inventory_id IN (?, ?)').run(lifecycle.inventoryId, concurrency.inventoryId);
       db.prepare('DELETE FROM inventory WHERE id IN (?, ?)').run(lifecycle.inventoryId, concurrency.inventoryId);
       db.prepare('DELETE FROM medicines WHERE id IN (?, ?)').run(lifecycle.medicineId, concurrency.medicineId);
     });

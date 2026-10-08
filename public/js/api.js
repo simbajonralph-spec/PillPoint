@@ -362,11 +362,19 @@ function appModal(options = {}) {
         </select>
       </div>`;
   } else if (formFields) {
-    control = formFields.map(field => `
-      <div class="field app-modal-field">
-        <label for="app-modal-field-${escapeHtml(field.name)}">${escapeHtml(field.label || field.name)}</label>
-        <input id="app-modal-field-${escapeHtml(field.name)}" name="${escapeHtml(field.name)}" type="${escapeHtml(field.type || 'text')}" value="${escapeHtml(field.value ?? '')}"${field.min != null ? ` min="${Number(field.min)}"` : ''}${field.max != null ? ` max="${Number(field.max)}"` : ''}${field.step != null ? ` step="${escapeHtml(field.step)}"` : ''}${field.required ? ' required' : ''} />
-      </div>`).join('');
+    control = formFields.map(field => {
+      const id = `app-modal-field-${escapeHtml(field.name)}`;
+      const required = field.required ? ' required' : '';
+      const input = field.options
+        ? `<select id="${id}" name="${escapeHtml(field.name)}"${required}>
+            ${!field.required ? `<option value="">${escapeHtml(field.placeholder || 'None')}</option>` : `<option value="">${escapeHtml(field.placeholder || 'Select an option')}</option>`}
+            ${field.options.map(option => `<option value="${escapeHtml(option.value)}" ${String(option.value) === String(field.value) ? 'selected' : ''}>${escapeHtml(option.label)}</option>`).join('')}
+          </select>`
+        : field.type === 'textarea'
+          ? `<textarea id="${id}" name="${escapeHtml(field.name)}" rows="${Number(field.rows || 3)}" maxlength="${Number(field.maxLength || 1000)}"${required}>${escapeHtml(field.value ?? '')}</textarea>`
+          : `<input id="${id}" name="${escapeHtml(field.name)}" type="${escapeHtml(field.type || 'text')}" value="${escapeHtml(field.value ?? '')}"${field.min != null ? ` min="${Number(field.min)}"` : ''}${field.max != null ? ` max="${Number(field.max)}"` : ''}${field.step != null ? ` step="${escapeHtml(field.step)}"` : ''}${required} />`;
+      return `<div class="field app-modal-field"><label for="${id}">${escapeHtml(field.label || field.name)}</label>${input}</div>`;
+    }).join('');
   }
 
   dialog.innerHTML = `
@@ -459,7 +467,7 @@ function appModal(options = {}) {
             input.reportValidity();
             return;
           }
-          value[field.name] = input.value;
+          value[field.name] = field.type === 'number' && input.value !== '' ? Number(input.value) : input.value;
         }
       }
       confirmed = true;

@@ -26,6 +26,46 @@ function mockOpenAiResponses(responses) {
   };
 }
 
+function ensureParacetamolBatches(t) {
+  const existingBatches = db.prepare(`
+    SELECT b.id, b.expiration_date
+    FROM medicine_batches b JOIN inventory i ON i.id = b.inventory_id
+    WHERE i.medicine_id = 1 AND b.current_quantity > 0
+  `).all();
+  db.prepare(`
+    UPDATE medicine_batches SET expiration_date = date('now','+365 days')
+    WHERE id IN (SELECT b.id FROM medicine_batches b
+      JOIN inventory i ON i.id = b.inventory_id WHERE i.medicine_id = 1 AND b.current_quantity > 0)
+  `).run();
+  const missing = db.prepare(`
+    SELECT i.id, i.pharmacy_id, i.medicine_id, i.stock_quantity
+    FROM inventory i
+    WHERE i.medicine_id = 1 AND i.stock_quantity > 0
+      AND NOT EXISTS (SELECT 1 FROM medicine_batches b WHERE b.inventory_id = i.id)
+  `).all();
+  const insertBatch = db.prepare(`
+    INSERT INTO medicine_batches (
+      pharmacy_id, medicine_id, inventory_id, batch_number,
+      expiration_date, quantity_received, current_quantity, status
+    ) VALUES (?, ?, ?, ?, date('now','+365 days'), ?, ?, 'active')
+  `);
+  const batchIds = missing.map(item => Number(insertBatch.run(
+    item.pharmacy_id,
+    item.medicine_id,
+    item.id,
+    `P1-TEST-PARACETAMOL-${item.id}`,
+    item.stock_quantity,
+    item.stock_quantity
+  ).lastInsertRowid));
+  t.after(() => {
+    if (batchIds.length) {
+      db.prepare(`DELETE FROM medicine_batches WHERE id IN (${batchIds.map(() => '?').join(',')})`).run(...batchIds);
+    }
+    const restoreExpiration = db.prepare('UPDATE medicine_batches SET expiration_date = ? WHERE id = ?');
+    existingBatches.forEach(batch => restoreExpiration.run(batch.expiration_date, batch.id));
+  });
+}
+
 test('P.A.I. matches common misspellings to catalog medicines without inventing matches', () => {
   const match = buildMedicineCandidates('paracitamol');
   assert.equal(match.matches[0].name, 'Paracetamol 500mg');
@@ -35,7 +75,7 @@ test('P.A.I. matches common misspellings to catalog medicines without inventing 
 
 test('P.A.I. inventory search subtracts pending and confirmed reservations only', () => {
   const inventory = db.prepare(`
-    SELECT i.id FROM inventory i JOIN pharmacies p ON p.id = i.pharmacy_id
+    SELECT i.id, i.pharmacy_id, i.medicine_id FROM inventory i JOIN pharmacies p ON p.id = i.pharmacy_id
     WHERE i.deployed = 1
       AND COALESCE(p.verification_status, CASE WHEN p.verified = 1 THEN 'VERIFIED' ELSE 'PENDING' END) = 'VERIFIED'
     LIMIT 1
@@ -44,6 +84,19 @@ test('P.A.I. inventory search subtracts pending and confirmed reservations only'
 
   const rollback = new Error('rollback availability search test');
   const run = db.transaction(() => {
+    db.prepare("UPDATE medicine_batches SET current_quantity = 0, status = 'depleted' WHERE inventory_id = ?")
+      .run(inventory.id);
+    db.prepare(`
+      INSERT INTO medicine_batches (
+        pharmacy_id, medicine_id, inventory_id, batch_number,
+        expiration_date, quantity_received, current_quantity, status
+      ) VALUES (?, ?, ?, ?, date('now','localtime','+365 days'), 25, 25, 'active')
+    `).run(
+      inventory.pharmacy_id,
+      inventory.medicine_id,
+      inventory.id,
+      `P1-TEST-AVAILABILITY-${inventory.id}`
+    );
     db.prepare('UPDATE inventory SET stock_quantity = 25 WHERE id = ?').run(inventory.id);
     db.prepare("UPDATE reservations SET status = 'cancelled' WHERE inventory_id = ? AND status IN ('pending','confirmed')").run(inventory.id);
     db.prepare(`
@@ -57,6 +110,10 @@ test('P.A.I. inventory search subtracts pending and confirmed reservations only'
     assert.equal(listing.available_stock, 9);
 
     db.prepare('UPDATE inventory SET stock_quantity = 16 WHERE id = ?').run(inventory.id);
+    db.prepare(`
+      UPDATE medicine_batches SET current_quantity = 16
+      WHERE inventory_id = ? AND batch_number = ?
+    `).run(inventory.id, `P1-TEST-AVAILABILITY-${inventory.id}`);
     assert.deepEqual(searchVerifiedInventory({ inventory_ids: [inventory.id] }), []);
     throw rollback;
   });
@@ -64,6 +121,7 @@ test('P.A.I. inventory search subtracts pending and confirmed reservations only'
 });
 
 test('P.A.I. search returns only verified, deployed, in-stock database listings and applies a price limit', async t => {
+  ensureParacetamolBatches(t);
   const beforeSearchId = db.prepare('SELECT COALESCE(MAX(id), 0) AS id FROM search_logs').get().id;
   const restore = mockOpenAiResponses([
     { intent: 'medicine_search', medicine: 'paracitamol', max_price: 10, quantity: null, pharmacy: null, topic: null },
@@ -84,6 +142,7 @@ test('P.A.I. search returns only verified, deployed, in-stock database listings 
 });
 
 test('natural-language catalog-topic search returns only medicines whose stored description matches', async t => {
+  ensureParacetamolBatches(t);
   const beforeSearchId = db.prepare('SELECT COALESCE(MAX(id), 0) AS id FROM search_logs').get().id;
   const restore = mockOpenAiResponses([
     { intent: 'medicine_search', medicine: null, max_price: null, quantity: null, pharmacy: null, topic: 'fever' },
@@ -101,6 +160,7 @@ test('natural-language catalog-topic search returns only medicines whose stored 
 });
 
 test('reservation assistance presents verified options and does not create a reservation', async t => {
+  ensureParacetamolBatches(t);
   const listing = searchVerifiedInventory({ medicine_id: 1 })[0];
   assert.ok(listing, 'seed data should include an available paracetamol listing');
   const before = db.prepare('SELECT COUNT(*) AS count FROM reservations').get().count;

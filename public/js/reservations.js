@@ -12,6 +12,7 @@
             <option value="">All</option>
             <option value="pending">Pending</option>
             <option value="confirmed">Confirmed</option>
+            <option value="ready_for_pickup">Ready for Pickup</option>
             <option value="completed">Completed</option>
             <option value="cancelled">Cancelled</option>
             <option value="expired">Expired</option>
@@ -35,7 +36,7 @@
     }
     list.innerHTML = `
       <table>
-        <thead><tr><th>Medicine</th><th>Pharmacy</th><th>Qty</th><th>Amount Due</th><th>Reserved</th><th>Expires</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th>Medicine</th><th>Pharmacy</th><th>Qty</th><th>Amount Due</th><th>Reserved</th><th>Deadline</th><th>Status</th><th></th></tr></thead>
         <tbody>
           ${rows.map(r => `
             <tr>
@@ -44,10 +45,10 @@
               <td>${r.quantity}</td>
               <td><strong>${money(r.price * r.quantity)}</strong><div class="text-sm muted">${money(r.price)} each</div></td>
               <td class="text-sm muted">${new Date(r.reserved_at).toLocaleString()}</td>
-              <td class="text-sm muted">${r.expires_at ? new Date(r.expires_at).toLocaleDateString() : '—'}</td>
-              <td>${statusBadge(r.status)}</td>
+              <td class="text-sm muted">${r.expires_at ? `${r.status === 'pending' ? 'Confirm by' : 'Pick up by'} ${new Date(r.expires_at).toLocaleString()}` : '—'}</td>
+              <td>${r.status === 'ready_for_pickup' ? '<span class="badge badge-ready-for-pickup">Ready for Pickup</span>' : statusBadge(r.status)}${r.issue_note ? `<div class="text-sm muted">Pharmacy note: ${escapeHtml(r.issue_note)}</div>` : ''}</td>
               <td>
-                ${['pending', 'confirmed'].includes(r.status)
+                ${['pending', 'confirmed', 'ready_for_pickup'].includes(r.status)
                   ? `<button class="btn btn-danger btn-sm cancel-btn" data-id="${r.id}">Cancel</button>`
                   : r.status === 'completed'
                     ? (r.customer_rating
