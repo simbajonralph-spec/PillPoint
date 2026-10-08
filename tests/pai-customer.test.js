@@ -33,6 +33,36 @@ test('P.A.I. matches common misspellings to catalog medicines without inventing 
   assert.equal(buildMedicineCandidates('unrelatedwordxyz').matches.length, 0);
 });
 
+test('P.A.I. inventory search subtracts pending and confirmed reservations only', () => {
+  const inventory = db.prepare(`
+    SELECT i.id FROM inventory i JOIN pharmacies p ON p.id = i.pharmacy_id
+    WHERE i.deployed = 1
+      AND COALESCE(p.verification_status, CASE WHEN p.verified = 1 THEN 'VERIFIED' ELSE 'PENDING' END) = 'VERIFIED'
+    LIMIT 1
+  `).get();
+  assert.ok(inventory, 'seed data should include verified deployed inventory');
+
+  const rollback = new Error('rollback availability search test');
+  const run = db.transaction(() => {
+    db.prepare('UPDATE inventory SET stock_quantity = 25 WHERE id = ?').run(inventory.id);
+    db.prepare("UPDATE reservations SET status = 'cancelled' WHERE inventory_id = ? AND status IN ('pending','confirmed')").run(inventory.id);
+    db.prepare(`
+      INSERT INTO reservations (customer_id, inventory_id, quantity, status)
+      VALUES (1, ?, 10, 'pending'), (1, ?, 6, 'confirmed'), (1, ?, 20, 'cancelled')
+    `).run(inventory.id, inventory.id, inventory.id);
+
+    let [listing] = searchVerifiedInventory({ inventory_ids: [inventory.id] });
+    assert.equal(listing.stock_quantity, 25);
+    assert.equal(listing.reserved_quantity, 16);
+    assert.equal(listing.available_stock, 9);
+
+    db.prepare('UPDATE inventory SET stock_quantity = 16 WHERE id = ?').run(inventory.id);
+    assert.deepEqual(searchVerifiedInventory({ inventory_ids: [inventory.id] }), []);
+    throw rollback;
+  });
+  assert.throws(() => run(), /rollback availability search test/);
+});
+
 test('P.A.I. search returns only verified, deployed, in-stock database listings and applies a price limit', async t => {
   const beforeSearchId = db.prepare('SELECT COALESCE(MAX(id), 0) AS id FROM search_logs').get().id;
   const restore = mockOpenAiResponses([

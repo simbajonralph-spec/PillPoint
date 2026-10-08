@@ -130,24 +130,78 @@ router.get('/medicines/search', (req, res) => {
   const q = `%${(req.query.q || '').trim()}%`;
   const category = (req.query.category || '').trim();
 
-  let sql = `
-    SELECT i.id AS inventory_id, i.price, i.stock_quantity, i.low_stock_threshold, i.brand,
+   let sql = `
+    SELECT i.id AS inventory_id, i.price, i.stock_quantity, i.deployed,
+           i.low_stock_threshold, i.brand,
            m.id AS medicine_id, m.name AS medicine_name, m.category,
-           p.id AS pharmacy_id, p.name AS pharmacy_name, p.address, p.latitude, p.longitude,
-           COALESCE(p.verification_status, CASE WHEN p.verified = 1 THEN 'VERIFIED' ELSE 'PENDING' END) AS verification_status,
+           p.id AS pharmacy_id, p.name AS pharmacy_name, p.address,
+           p.latitude, p.longitude,
+           COALESCE(p.verification_status,
+             CASE WHEN p.verified = 1 THEN 'VERIFIED' ELSE 'PENDING' END
+           ) AS verification_status,
            p.verified,
-           p.store_image, p.profile_image, p.cover_image, p.description, p.hours,
+           p.store_image, p.profile_image, p.cover_image,
+           p.description, p.hours,
+
+           COALESCE((
+             SELECT SUM(r.quantity)
+             FROM reservations r
+             WHERE r.inventory_id = i.id
+               AND r.status IN ('pending', 'confirmed')
+           ), 0) AS reserved_quantity,
+
+           MAX(
+             0,
+             i.stock_quantity - COALESCE((
+               SELECT SUM(r.quantity)
+               FROM reservations r
+               WHERE r.inventory_id = i.id
+                 AND r.status IN ('pending', 'confirmed')
+             ), 0)
+           ) AS available_stock,
+
            CASE WHEN EXISTS (
              SELECT 1 FROM inventory available
-             WHERE available.pharmacy_id = p.id AND available.deployed = 1 AND available.stock_quantity > 0
-           ) THEN 'Available' ELSE 'No stock currently available' END AS pharmacy_status,
-           (SELECT ROUND(AVG(rating), 1) FROM pharmacy_ratings WHERE pharmacy_id = p.id) AS average_rating,
-           (SELECT COUNT(*) FROM pharmacy_ratings WHERE pharmacy_id = p.id) AS rating_count
+             WHERE available.pharmacy_id = p.id
+               AND available.deployed = 1
+               AND available.stock_quantity - COALESCE((
+                 SELECT SUM(r.quantity)
+                 FROM reservations r
+                 WHERE r.inventory_id = available.id
+                   AND r.status IN ('pending', 'confirmed')
+               ), 0) > 0
+           ) THEN 'Available'
+           ELSE 'No stock currently available'
+           END AS pharmacy_status,
+
+           (SELECT ROUND(AVG(rating), 1)
+            FROM pharmacy_ratings
+            WHERE pharmacy_id = p.id) AS average_rating,
+
+           (SELECT COUNT(*)
+            FROM pharmacy_ratings
+            WHERE pharmacy_id = p.id) AS rating_count
+
     FROM inventory i
     JOIN medicines m ON m.id = i.medicine_id
     JOIN pharmacies p ON p.id = i.pharmacy_id
-    WHERE COALESCE(p.verification_status, CASE WHEN p.verified = 1 THEN 'VERIFIED' ELSE 'PENDING' END) = 'VERIFIED' AND m.name LIKE ? AND i.deployed = 1 AND i.stock_quantity > 0
+
+    WHERE COALESCE(
+            p.verification_status,
+            CASE WHEN p.verified = 1 THEN 'VERIFIED' ELSE 'PENDING' END
+          ) = 'VERIFIED'
+      AND m.name LIKE ?
+      AND i.deployed = 1
+      AND (
+        i.stock_quantity - COALESCE((
+          SELECT SUM(r.quantity)
+          FROM reservations r
+          WHERE r.inventory_id = i.id
+            AND r.status IN ('pending', 'confirmed')
+        ), 0)
+      ) > 0
   `;
+
   const params = [q];
   if (category) {
     sql += ' AND m.category = ?';
@@ -272,12 +326,14 @@ router.get('/reservations', (req, res) => {
 // POST /api/customer/reservations  { inventory_id, quantity }
 router.post('/reservations', (req, res) => {
   const { inventory_id, quantity } = req.body;
-  const qty = parseInt(quantity, 10);
-  if (!inventory_id || !qty || qty < 1) {
+  const inventoryId = Number(inventory_id);
+  const qty = Number(quantity);
+  if (!Number.isSafeInteger(inventoryId) || inventoryId < 1
+    || !Number.isSafeInteger(qty) || qty < 1) {
     return res.status(422).json({ error: 'inventory_id and a valid quantity are required.' });
   }
 
-  const inv = db.prepare('SELECT * FROM inventory WHERE id = ?').get(inventory_id);
+  const inv = db.prepare('SELECT * FROM inventory WHERE id = ?').get(inventoryId);
   if (!inv) return res.status(404).json({ error: 'Inventory item not found.' });
   if (!inv.deployed) return res.status(422).json({ error: 'This item is not currently available for reservation.' });
 

@@ -227,6 +227,8 @@ async function searchWithIntent(text, userId, intent) {
       pharmacy: row.pharmacy_name,
       price: row.price,
       stock_quantity: row.stock_quantity,
+      reserved_quantity: row.reserved_quantity,
+      available_stock: row.available_stock,
       address: row.address,
     })),
   };
