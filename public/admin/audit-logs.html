@@ -5,6 +5,13 @@
 <title>Audit Logs — PillPoint</title>
 <link rel="icon" type="image/svg+xml" href="/img/logo-mark.svg" />
 <link rel="stylesheet" href="/css/style.css" />
+<style>
+.audit-filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+.audit-filter-grid .field { min-width: 0; }
+.audit-pagination { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 14px 16px; border-top: 1px solid var(--border); }
+.audit-pagination-actions { display: flex; align-items: center; gap: 8px; }
+.audit-table-wrap { overflow-x: auto; }
+</style>
 </head>
 <body>
 <script src="/js/api.js"></script>
@@ -14,41 +21,106 @@
   const user = await guardPage(['admin'], 'Audit Log', 'Administrative actions and system activity');
   if (!user) return;
   const content = document.getElementById('page-content');
-  content.innerHTML = skeletonLoader('table', 5);
-  try {
-    const data = await Api.get('/api/admin/audit-logs');
-    const logs = data.logs || [];
-    content.innerHTML = `
-      <div class="card" style="padding:0;">
-        <table>
-          <thead>
-            <tr>
-              <th>Action</th>
-              <th>Target</th>
-              <th>Admin</th>
-              <th>Status</th>
-              <th>Date</th>
-              <th>Reason</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${logs.length ? logs.map(log => `
-              <tr>
-                <td><strong>${escapeHtml(log.action || '—')}</strong></td>
-                <td class="text-sm muted">${escapeHtml(log.target_name || log.pharmacy_name || log.target_type || '—')}</td>
-                <td class="text-sm muted">${escapeHtml(log.admin_name || 'System')}</td>
-                <td>${log.status === 'SUCCESS' ? '<span class="badge badge-available">Success</span>' : '<span class="badge badge-warning">' + escapeHtml(log.status || 'Unknown') + '</span>'}</td>
-                <td class="text-sm muted">${log.created_at ? new Date(log.created_at).toLocaleString() : '—'}</td>
-                <td class="text-sm muted">${escapeHtml(log.reason || log.description || '—')}</td>
-              </tr>
-            `).join('') : '<tr><td colspan="6"><div class="empty-state"><h3>No activity logged</h3><p>Admin actions will appear here once they are performed.</p></div></td></tr>'}
-          </tbody>
-        </table>
+  content.innerHTML = `
+    <form id="audit-filter-form" class="card">
+      <div class="audit-filter-grid">
+        <div class="field"><label for="audit-search">Search activity</label><input id="audit-search" name="q" type="search" maxlength="200" placeholder="Action, target, reason..." /></div>
+        <div class="field"><label for="audit-from">From date</label><input id="audit-from" name="fromDate" type="date" /></div>
+        <div class="field"><label for="audit-page-size">Rows per page</label><select id="audit-page-size" name="pageSize"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option><option value="100">100</option></select></div>
       </div>
+      <div class="flex mt-16" style="gap:8px;flex-wrap:wrap;">
+        <button type="submit" class="btn btn-primary btn-sm">Apply filters</button>
+        <button type="reset" id="audit-reset" class="btn btn-outline btn-sm">Clear filters</button>
+      </div>
+    </form>
+    <div class="card" style="padding:0;">
+      <div id="audit-results" class="audit-table-wrap">${skeletonLoader('table', 5)}</div>
+      <div class="audit-pagination">
+        <span id="audit-page-summary" class="text-sm muted" aria-live="polite"></span>
+        <div class="audit-pagination-actions">
+          <button type="button" id="audit-prev" class="btn btn-outline btn-sm">Previous</button>
+          <span id="audit-page-label" class="text-sm muted"></span>
+          <button type="button" id="audit-next" class="btn btn-outline btn-sm">Next</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const form = document.getElementById('audit-filter-form');
+  const results = document.getElementById('audit-results');
+  const pageSummary = document.getElementById('audit-page-summary');
+  const pageLabel = document.getElementById('audit-page-label');
+  const previousButton = document.getElementById('audit-prev');
+  const nextButton = document.getElementById('audit-next');
+  let currentPage = 1;
+  let totalPages = 0;
+  let requestSequence = 0;
+  let searchTimer;
+
+  function renderLogs(logs) {
+    return `
+      <table>
+        <thead><tr><th>Action</th><th>Target</th><th>Admin</th><th>Status</th><th>Date</th><th>Reason</th></tr></thead>
+        <tbody>
+          ${logs.length ? logs.map(log => `
+            <tr>
+              <td><strong>${escapeHtml(log.action || '—')}</strong></td>
+              <td class="text-sm muted">${escapeHtml(log.target_name || log.pharmacy_name || log.target_type || '—')}</td>
+              <td class="text-sm muted">${escapeHtml(log.admin_name || 'System')}</td>
+              <td>${log.status === 'SUCCESS' ? '<span class="badge badge-available">Success</span>' : '<span class="badge badge-warning">' + escapeHtml(log.status || 'Unknown') + '</span>'}</td>
+              <td class="text-sm muted">${log.created_at ? new Date(log.created_at).toLocaleString() : '—'}</td>
+              <td class="text-sm muted">${escapeHtml(log.reason || log.description || '—')}</td>
+            </tr>
+          `).join('') : '<tr><td colspan="6"><div class="empty-state"><h3>No matching activity</h3><p>Adjust or clear the filters to see more audit entries.</p></div></td></tr>'}
+        </tbody>
+      </table>
     `;
-  } catch (err) {
-    content.innerHTML = `<div class="alert alert-error">${escapeHtml(err.message)}</div>`;
   }
+
+  async function load(page = 1) {
+    const requestId = ++requestSequence;
+    const params = new URLSearchParams(new FormData(form));
+    params.set('page', String(page));
+    results.innerHTML = skeletonLoader('table', 5);
+    previousButton.disabled = true;
+    nextButton.disabled = true;
+    try {
+      const data = await Api.get('/api/admin/audit-logs?' + params.toString());
+      if (requestId !== requestSequence) return;
+      const pagination = data.pagination || { page: 1, pageSize: 25, total: (data.logs || []).length, totalPages: 1 };
+      currentPage = pagination.page;
+      totalPages = pagination.totalPages;
+      results.innerHTML = renderLogs(data.logs || []);
+      const firstRow = pagination.total ? ((currentPage - 1) * pagination.pageSize) + 1 : 0;
+      const lastRow = Math.min(currentPage * pagination.pageSize, pagination.total);
+      pageSummary.textContent = `Showing ${firstRow}–${lastRow} of ${pagination.total} audit entries`;
+      pageLabel.textContent = totalPages ? `Page ${currentPage} of ${totalPages}` : 'No pages';
+      previousButton.disabled = currentPage <= 1;
+      nextButton.disabled = currentPage >= totalPages;
+    } catch (err) {
+      if (requestId !== requestSequence) return;
+      results.innerHTML = `<div class="alert alert-error">${escapeHtml(err.message)}</div>`;
+      pageSummary.textContent = 'Could not load audit entries.';
+      pageLabel.textContent = '';
+    }
+  }
+
+  form.addEventListener('submit', event => { event.preventDefault(); load(1); });
+  form.querySelectorAll('select, input[type="date"]').forEach(field => {
+    field.addEventListener('change', () => load(1));
+  });
+  document.getElementById('audit-search').addEventListener('input', () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => load(1), 300);
+  });
+  document.getElementById('audit-reset').addEventListener('click', event => {
+    event.preventDefault();
+    form.reset();
+    load(1);
+  });
+  previousButton.addEventListener('click', () => { if (currentPage > 1) load(currentPage - 1); });
+  nextButton.addEventListener('click', () => { if (currentPage < totalPages) load(currentPage + 1); });
+  load();
 })();
 </script>
 </body>

@@ -5,6 +5,32 @@
 <title>Manage Pharmacies — PillPoint</title>
 <link rel="icon" type="image/svg+xml" href="/img/logo-mark.svg" />
 <link rel="stylesheet" href="/css/style.css" />
+<style>
+.pharmacy-branch-row { cursor: pointer; }
+.pharmacy-branch-row:hover { background: #f0fdfa; }
+.pharmacy-branch-row:focus-within { outline: 2px solid var(--teal-dark); outline-offset: -2px; }
+.pharmacies-table { table-layout: fixed; }
+.pharmacies-table th,
+.pharmacies-table td { min-width: 0; overflow-wrap: anywhere; vertical-align: top; }
+.pharmacies-table .pharmacy-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.pharmacies-table .pharmacy-actions > .btn { max-width: 100%; white-space: normal; }
+.organization-menu { position: relative; display: inline-flex; }
+.organization-menu > summary { list-style: none; cursor: pointer; }
+.organization-menu > summary::-webkit-details-marker { display: none; }
+.organization-menu-popover {
+  position: absolute; top: calc(100% + 4px); right: 0; z-index: 30;
+  display: none; min-width: 150px; padding: 4px; border: 1px solid var(--border);
+  border-radius: 7px; background: #fff; box-shadow: var(--shadow-md);
+}
+.organization-menu[open] .organization-menu-popover { display: grid; gap: 2px; }
+.organization-menu-popover button {
+  width: 100%; min-height: 34px; padding: 7px 9px; border: 0; border-radius: 4px;
+  background: transparent; color: var(--text); font-size: 12px; text-align: left; cursor: pointer;
+}
+.organization-menu-popover button:hover { background: #F1F5F9; }
+.organization-menu-popover button.danger-action { color: #B91C1C; }
+.organization-menu-popover button.danger-action:hover { background: #FEF2F2; }
+</style>
 </head>
 <body>
 <script src="/js/api.js"></script>
@@ -20,12 +46,160 @@
         <label>Search</label>
         <input type="text" id="search-input" placeholder="Search by name, address, or phone" />
       </div>
+      <div class="field">
+        <label for="status-filter">Verification status</label>
+        <select id="status-filter">
+          <option value="ALL">All statuses</option>
+          <option value="PENDING">Pending</option>
+          <option value="UNDER_REVIEW">Under review</option>
+          <option value="CORRECTION_REQUIRED">Correction required</option>
+          <option value="APPROVED">Approved</option>
+          <option value="REJECTED">Rejected</option>
+          <option value="SUSPENDED">Suspended</option>
+          <option value="REVERIFICATION_REQUIRED">Reverification required</option>
+        </select>
+      </div>
     </div>
     <div id="list" class="table-wrap">${skeletonLoader('table', 4)}</div>
   `;
   const list = document.getElementById('list');
   const searchInput = document.getElementById('search-input');
+  const statusFilter = document.getElementById('status-filter');
   let searchTimer;
+
+  function statusBadge(status) {
+    const labels = {
+      PENDING: 'Pending',
+      UNDER_REVIEW: 'Under Review',
+      CORRECTION_REQUIRED: 'Correction Required',
+      APPROVED: 'Approved',
+      REJECTED: 'Rejected',
+      SUSPENDED: 'Suspended',
+      REVERIFICATION_REQUIRED: 'Reverification Required',
+    };
+    const style = status === 'APPROVED' ? 'badge-verified'
+      : ['CORRECTION_REQUIRED', 'SUSPENDED', 'REJECTED', 'REVERIFICATION_REQUIRED'].includes(status) ? 'badge-warning'
+        : 'badge-unverified';
+    return `<span class="badge ${style}">${escapeHtml(labels[status] || status)}</span>`;
+  }
+
+  function verificationActions(p) {
+    const button = (action, label, style = 'btn-outline') =>
+      `<button type="button" class="btn ${style} btn-sm act-btn" data-id="${p.id}" data-action="${action}">${label}</button>`;
+    if (p.verification_status === 'PENDING') {
+      return button('approve', 'Approve', 'btn-primary')
+        + button('reject', 'Reject');
+    }
+    if (p.verification_status === 'UNDER_REVIEW') {
+      return button('approve', 'Approve', 'btn-primary')
+        + button('reject', 'Reject');
+    }
+    if (p.verification_status === 'CORRECTION_REQUIRED') return button('reject', 'Reject');
+    if (p.verification_status === 'APPROVED') {
+      return button('require-reverification', 'Require Reverification');
+    }
+    if (p.verification_status === 'SUSPENDED') return button('reactivate', 'Reactivate', 'btn-primary');
+    if (p.verification_status === 'REVERIFICATION_REQUIRED') {
+      return button('reject', 'Reject');
+    }
+    return '';
+  }
+
+  function organizationMenu(p) {
+    return `
+      <details class="organization-menu">
+        <summary class="btn btn-outline btn-sm" aria-label="Organization actions" title="Organization actions" style="min-width:36px;padding:4px 9px;font-size:18px;line-height:1;">...</summary>
+        <div class="organization-menu-popover">
+          ${['PENDING', 'REVERIFICATION_REQUIRED'].includes(p.verification_status)
+            ? `<button type="button" class="act-btn" data-id="${p.id}" data-action="review">Under Review</button>`
+            : ''}
+          ${['PENDING', 'UNDER_REVIEW', 'REVERIFICATION_REQUIRED'].includes(p.verification_status)
+            ? `<button type="button" class="act-btn" data-id="${p.id}" data-action="request-correction">Request Correction</button>`
+            : ''}
+          ${p.verification_status === 'APPROVED'
+            ? `<button type="button" class="act-btn danger-action" data-id="${p.id}" data-action="suspend">Suspend</button>`
+            : ''}
+          <button type="button" class="toggle-notify-btn" data-id="${p.id}">Notification</button>
+        </div>
+      </details>
+    `;
+  }
+
+  document.addEventListener('click', event => {
+    if (!event.target.closest('.organization-menu')) {
+      document.querySelectorAll('.organization-menu[open]').forEach(menu => { menu.open = false; });
+    }
+  });
+  window.addEventListener('scroll', () => {
+    document.querySelectorAll('.organization-menu[open]').forEach(menu => { menu.open = false; });
+  }, true);
+
+  function wireOrganizationMenus() {
+    document.querySelectorAll('.organization-menu').forEach(menu => {
+      menu.addEventListener('toggle', () => {
+        const panel = menu.querySelector('.organization-menu-popover');
+        if (!menu.open || !panel) {
+          if (panel) panel.removeAttribute('style');
+          return;
+        }
+        panel.style.position = 'fixed';
+        panel.style.visibility = 'hidden';
+        panel.style.left = '0';
+        panel.style.right = 'auto';
+        panel.style.top = '0';
+        const trigger = menu.querySelector('summary').getBoundingClientRect();
+        const panelRect = panel.getBoundingClientRect();
+        const left = Math.max(8, Math.min(trigger.right - panelRect.width, window.innerWidth - panelRect.width - 8));
+        const top = trigger.bottom + panelRect.height + 8 <= window.innerHeight
+          ? trigger.bottom + 4
+          : Math.max(8, trigger.top - panelRect.height - 4);
+        panel.style.left = `${left}px`;
+        panel.style.top = `${top}px`;
+        panel.style.visibility = '';
+      });
+    });
+  }
+
+  function registrationSubmissionHtml(p) {
+    const value = item => item == null || item === '' ? 'Not submitted' : escapeHtml(item);
+    const location = Number.isFinite(Number(p.latitude)) && Number.isFinite(Number(p.longitude))
+      ? `${Number(p.latitude).toFixed(5)}, ${Number(p.longitude).toFixed(5)}`
+      : 'Not submitted';
+    return `
+      <h3>Submitted registration details</h3>
+      <div class="grid grid-2 mt-16">
+        <div><strong>Pharmacy name</strong><div>${value(p.name)}</div></div>
+        <div><strong>Verification status</strong><div>${statusBadge(p.verification_status)}</div></div>
+        <div><strong>Owner first name</strong><div>${value(p.owner_first_name)}</div></div>
+        <div><strong>Owner last name</strong><div>${value(p.owner_last_name)}</div></div>
+        <div><strong>Email</strong><div>${value(p.business_email)}</div></div>
+        <div><strong>Mobile number</strong><div>${value(p.phone)}</div></div>
+        <div><strong>Address</strong><div>${value(p.address)}</div></div>
+        <div><strong>Map coordinates</strong><div>${location}</div></div>
+        <div><strong>Operating hours</strong><div>${value(p.hours)}</div></div>
+        <div><strong>Description</strong><div>${value(p.description)}</div></div>
+        ${p.correction_reason ? `<div><strong>Correction requested</strong><div>${value(p.correction_reason)}</div></div>` : ''}
+      </div>
+      <div class="flex mt-16" style="gap:16px;align-items:flex-start;flex-wrap:wrap;">
+        <div>
+          <strong>Pharmacy logo</strong>
+          <div class="mt-8">${p.has_pharmacy_logo
+            ? `<a href="/api/admin/pharmacies/${p.id}/logo" target="_blank" rel="noopener"><img src="/api/admin/pharmacies/${p.id}/logo" alt="${escapeHtml(p.name)} pharmacy logo" style="display:block;max-width:180px;max-height:140px;object-fit:contain;border:1px solid var(--border);border-radius:8px;padding:8px;background:#fff;" /></a>`
+            : '<span class="muted text-sm">No logo submitted</span>'}</div>
+        </div>
+        <div>
+          <strong>Business permit (submitted document)</strong>
+          <div class="mt-8">${p.has_business_permit
+            ? `<a class="btn btn-outline btn-sm" href="/api/admin/pharmacies/${p.id}/permit" target="_blank" rel="noopener">View business permit</a>`
+            : '<span class="muted text-sm">No permit submitted</span>'}</div>
+        </div>
+      </div>
+      <div class="mt-16" id="verification-history-${p.id}">
+        <h3>Verification history</h3>
+        <p class="text-sm muted">Loading audit history…</p>
+      </div>
+    `;
+  }
 
   function notifyFormHtml(p) {
     return `
@@ -40,10 +214,11 @@
     `;
   }
 
-  async function load(q) {
+  async function load(q, status = 'ALL') {
     try {
       const params = new URLSearchParams();
       if (q) params.set('q', q);
+      if (status !== 'ALL') params.set('status', status);
       const data = await Api.get('/api/admin/pharmacies?' + params.toString());
       if (!data.pharmacies.length) {
         list.innerHTML = `<div class="empty-state"><h3>No pharmacies found</h3><p>Try a different search term.</p></div>`;
@@ -51,50 +226,118 @@
       }
       list.innerHTML = `
         <div class="card" style="padding:0;">
-          <table>
-            <thead><tr><th>Pharmacy</th><th>Address</th><th>Phone</th><th>Permit</th><th>Reservations</th><th>Status</th><th></th></tr></thead>
+          <table class="pharmacies-table">
+            <thead><tr><th>Pharmacy branch</th><th>Address</th><th>Phone</th><th>Reservations</th><th>Status</th><th>Actions</th></tr></thead>
             <tbody>
               ${data.pharmacies.map(p => `
-                <tr>
-                  <td style="font-weight:600">${escapeHtml(p.name)}</td>
+                <tr class="pharmacy-branch-row" data-branch-id="${p.id}" title="Click to view this branch's registration submission">
+                  <td><button type="button" class="branch-submission-btn" data-id="${p.id}" aria-expanded="false" aria-controls="submission-${p.id}" style="padding:0;border:0;background:none;color:var(--teal-dark);font-weight:700;text-align:left;text-decoration:underline;cursor:pointer;">${escapeHtml(p.name)}</button></td>
                   <td class="text-sm muted">${escapeHtml(p.address)}</td>
-                  <td class="text-sm muted">${escapeHtml(p.phone || '—')}</td>
-                  <td>${p.has_business_permit ? `<a class="btn btn-outline btn-sm" href="/api/admin/pharmacies/${p.id}/permit" target="_blank" rel="noopener">View</a>` : '<span class="muted text-sm">Missing</span>'}</td>
+                  <td class="text-sm muted">${escapeHtml(p.phone || 'Not submitted')}</td>
                   <td>${p.reservation_count}</td>
-                  <td>${p.verification_status === 'VERIFIED' ? '<span class="badge badge-verified">Verified</span>' : p.verification_status === 'REJECTED' ? '<span class="badge badge-unverified">Rejected</span>' : p.verification_status === 'SUSPENDED' ? '<span class="badge badge-warning">Suspended</span>' : '<span class="badge badge-unverified">Pending</span>'}</td>
-                  <td style="white-space:nowrap;">
-                    ${p.verification_status === 'VERIFIED'
-                      ? `<button class="btn btn-outline btn-sm act-btn" data-id="${p.id}" data-action="suspend">Suspend</button>`
-                      : p.verification_status === 'SUSPENDED'
-                        ? `<button class="btn btn-primary btn-sm act-btn" data-id="${p.id}" data-action="reactivate">Reactivate</button>`
-                        : `<button class="btn btn-primary btn-sm act-btn" data-id="${p.id}" data-action="verify">Verify</button>`}
-                    ${p.verification_status !== 'REJECTED' ? `<button class="btn btn-outline btn-sm act-btn" data-id="${p.id}" data-action="reject">Reject</button>` : ''}
+                  <td>${statusBadge(p.verification_status)}${p.correction_reason ? `<div class="text-sm muted mt-8">${escapeHtml(p.correction_reason)}</div>` : ''}</td>
+                  <td>
+                    <div class="pharmacy-actions">
+                    ${verificationActions(p)}
                     <button class="btn btn-outline btn-sm toggle-reviews-btn" data-id="${p.id}">Reviews (${p.rating_count})</button>
-                    <button class="btn btn-outline btn-sm toggle-notify-btn" data-id="${p.id}">Notify</button>
+                    ${organizationMenu(p)}
+                    </div>
                   </td>
                 </tr>
-                <tr><td colspan="7" style="padding:0;"><div class="admin-review-panel" id="reviews-${p.id}" hidden>
+                <tr id="submission-row-${p.id}" hidden><td colspan="6" style="padding:0;"><div class="admin-review-panel" id="submission-${p.id}" aria-live="polite"></div></td></tr>
+                <tr><td colspan="6" style="padding:0;"><div class="admin-review-panel" id="reviews-${p.id}" hidden>
                   <strong>★ ${p.average_rating || '—'} average · ${p.rating_count} review${p.rating_count === 1 ? '' : 's'}</strong>
                   ${p.reviews.length ? p.reviews.map(review => `<article class="pharmacy-review-row"><div class="flex justify-between items-center"><strong>@${escapeHtml(review.customer_username || review.customer_name)}</strong><span class="review-stars">${'★'.repeat(review.rating)}${'☆'.repeat(5 - review.rating)}</span></div><div class="text-sm muted">${new Date(review.updated_at).toLocaleDateString()}</div>${review.comment ? `<p>${escapeHtml(review.comment)}</p>` : ''}</article>`).join('') : '<p class="text-sm muted mt-8">No customer reviews yet.</p>'}
                   <p class="text-sm muted mt-8">Customer ratings and comments are read-only.</p>
                 </div></td></tr>
-                <tr><td colspan="7" style="padding:0;">${notifyFormHtml(p)}</td></tr>
+                <tr><td colspan="6" style="padding:0;">${notifyFormHtml(p)}</td></tr>
               `).join('')}
             </tbody>
           </table>
         </div>
       `;
+      wireOrganizationMenus();
+      async function toggleBranchSubmission(id) {
+        const row = document.getElementById(`submission-row-${id}`);
+        const panel = document.getElementById(`submission-${id}`);
+        const buttons = document.querySelectorAll(`.branch-submission-btn[data-id="${id}"]`);
+        const isOpen = !row.hidden;
+        document.querySelectorAll('[id^="submission-row-"]').forEach(item => { item.hidden = true; });
+        document.querySelectorAll('.branch-submission-btn').forEach(item => item.setAttribute('aria-expanded', 'false'));
+        if (isOpen) return;
+        row.hidden = false;
+        buttons.forEach(button => button.setAttribute('aria-expanded', 'true'));
+        if (panel.dataset.loaded === 'true' || panel.dataset.loading === 'true') return;
+        panel.dataset.loading = 'true';
+        panel.innerHTML = '<p class="text-sm muted">Loading registration submission…</p>';
+        try {
+          const [{ pharmacy }, { history }] = await Promise.all([
+            Api.get(`/api/admin/pharmacies/${id}`),
+            Api.get(`/api/admin/pharmacies/${id}/verification-history`),
+          ]);
+          panel.innerHTML = registrationSubmissionHtml(pharmacy);
+          const historyPanel = document.getElementById(`verification-history-${id}`);
+          historyPanel.innerHTML = `
+            <h3>Verification history</h3>
+            ${history.length
+              ? `<ol class="mt-8">${history.map(item => `<li class="mt-8"><strong>${escapeHtml(item.action)}</strong> · ${escapeHtml(item.previous_status.replaceAll('_', ' '))} → ${escapeHtml(item.new_status.replaceAll('_', ' '))}<div class="text-sm muted">${escapeHtml(item.actor_name)} (${escapeHtml(item.actor_role)}) · ${new Date(item.created_at).toLocaleString()}</div>${item.reason ? `<div class="text-sm">${escapeHtml(item.reason)}</div>` : ''}</li>`).join('')}</ol>`
+              : '<p class="text-sm muted mt-8">No verification decisions have been recorded yet.</p>'}
+          `;
+          panel.dataset.loaded = 'true';
+        } catch (err) {
+          panel.innerHTML = `<div class="alert alert-error">${escapeHtml(err.message)}</div>`;
+        } finally {
+          delete panel.dataset.loading;
+        }
+      }
+      document.querySelectorAll('.pharmacy-branch-row').forEach(row => {
+        row.addEventListener('click', event => {
+          if (event.target.closest('button, a, input, select, textarea, label, details')) return;
+          toggleBranchSubmission(row.dataset.branchId);
+        });
+      });
+      document.querySelectorAll('.branch-submission-btn').forEach(button => {
+        button.addEventListener('click', () => toggleBranchSubmission(button.dataset.id));
+      });
       document.querySelectorAll('.act-btn').forEach(btn => {
         btn.addEventListener('click', async () => {
+          const menu = btn.closest('.organization-menu');
+          if (menu) menu.open = false;
           try {
-            await Api.post(`/api/admin/pharmacies/${btn.dataset.id}/${btn.dataset.action}`);
-            toast('Pharmacy status updated.');
-            load(searchInput.value.trim());
+            const action = btn.dataset.action;
+            const reasonRequired = ['request-correction', 'reject', 'suspend', 'reactivate', 'require-reverification'].includes(action);
+            const actionLabels = {
+              review: ['Move pharmacy to Under Review', 'Start review of this pharmacy registration.'],
+              'request-correction': ['Request pharmacy correction', 'Describe the issue the pharmacy must correct.'],
+              approve: ['Approve pharmacy registration', 'Approve this pharmacy and activate its verified listings.'],
+              reject: ['Reject pharmacy registration', 'Provide the reason for rejecting this registration.'],
+              suspend: ['Suspend pharmacy branch', 'Provide the reason for suspending this approved pharmacy.'],
+              reactivate: ['Reactivate pharmacy branch', 'Provide the reason for reactivating this suspended pharmacy.'],
+              'require-reverification': ['Require pharmacy reverification', 'Provide the reason this approved pharmacy must be verified again.'],
+            };
+            const [title, message] = actionLabels[action];
+            const reason = action !== 'review' && action !== 'approve'
+              ? await appModal({
+                title,
+                message,
+                input: { label: 'Reason' },
+                confirmText: action === 'request-correction' ? 'Request Correction' : action === 'require-reverification' ? 'Require Reverification' : action.charAt(0).toUpperCase() + action.slice(1),
+                danger: ['reject', 'suspend'].includes(action),
+              })
+              : null;
+            if (action !== 'review' && action !== 'approve' && reason === null) return;
+            const payload = reasonRequired ? { reason } : {};
+            const response = await Api.post(`/api/admin/pharmacies/${btn.dataset.id}/${action}`,
+              payload);
+            toast(response.notified === 0 ? 'Status updated, but no pharmacy staff account was available for notification.' : `Status updated. ${response.notified} pharmacy staff account(s) notified.`);
+            load(searchInput.value.trim(), statusFilter.value);
           } catch (err) { toast(err.message, 'error'); }
         });
       });
       document.querySelectorAll('.toggle-notify-btn').forEach(btn => {
         btn.addEventListener('click', () => {
+          const menu = btn.closest('.organization-menu');
+          if (menu) menu.open = false;
           document.getElementById(`notify-form-${btn.dataset.id}`).classList.toggle('open');
         });
       });
@@ -129,10 +372,11 @@
 
   searchInput.addEventListener('input', () => {
     clearTimeout(searchTimer);
-    searchTimer = setTimeout(() => load(searchInput.value.trim()), 250);
+    searchTimer = setTimeout(() => load(searchInput.value.trim(), statusFilter.value), 250);
   });
+  statusFilter.addEventListener('change', () => load(searchInput.value.trim(), statusFilter.value));
 
-  load();
+  load('', statusFilter.value);
 })();
 </script>
 </body>

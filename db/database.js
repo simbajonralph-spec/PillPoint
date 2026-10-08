@@ -41,6 +41,8 @@ CREATE TABLE IF NOT EXISTS pharmacies (
   business_permit TEXT,
   verified INTEGER NOT NULL DEFAULT 0,
   verification_status TEXT NOT NULL DEFAULT 'PENDING' CHECK(verification_status IN ('PENDING','VERIFIED','REJECTED','SUSPENDED')),
+  verification_stage TEXT NOT NULL DEFAULT 'PENDING',
+  correction_reason TEXT,
   verification_date TEXT,
   verification_reason TEXT,
   rejection_reason TEXT,
@@ -50,6 +52,7 @@ CREATE TABLE IF NOT EXISTS pharmacies (
   store_image TEXT,
   profile_image TEXT,
   cover_image TEXT,
+  pharmacy_logo TEXT,
   description TEXT,
   hours TEXT,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -351,8 +354,28 @@ CREATE UNIQUE INDEX IF NOT EXISTS folders_one_deployed_per_pharmacy
 ON folders(pharmacy_id) WHERE status = 'deployed';
 `);
 
+db.exec(`
+CREATE TABLE IF NOT EXISTS pharmacy_verification_history (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  pharmacy_id INTEGER NOT NULL,
+  actor_user_id INTEGER,
+  actor_name TEXT NOT NULL,
+  actor_role TEXT NOT NULL,
+  action TEXT NOT NULL,
+  previous_status TEXT NOT NULL,
+  new_status TEXT NOT NULL,
+  reason TEXT,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (pharmacy_id) REFERENCES pharmacies(id) ON DELETE RESTRICT,
+  FOREIGN KEY (actor_user_id) REFERENCES users(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS pharmacy_verification_history_timeline
+  ON pharmacy_verification_history(pharmacy_id, created_at DESC, id DESC);
+`);
+
 const pharmacyCols = db.prepare("PRAGMA table_info(pharmacies)").all().map(c => c.name);
 if (!pharmacyCols.includes('store_image')) db.exec("ALTER TABLE pharmacies ADD COLUMN store_image TEXT");
+if (!pharmacyCols.includes('pharmacy_logo')) db.exec('ALTER TABLE pharmacies ADD COLUMN pharmacy_logo TEXT');
 if (!pharmacyCols.includes('business_email')) db.exec('ALTER TABLE pharmacies ADD COLUMN business_email TEXT');
 if (!pharmacyCols.includes('profile_image')) db.exec("ALTER TABLE pharmacies ADD COLUMN profile_image TEXT");
 if (!pharmacyCols.includes('cover_image')) db.exec("ALTER TABLE pharmacies ADD COLUMN cover_image TEXT");
@@ -368,6 +391,8 @@ if (!pharmacyCols.includes('rejection_reason')) db.exec('ALTER TABLE pharmacies 
 if (!pharmacyCols.includes('suspension_reason')) db.exec('ALTER TABLE pharmacies ADD COLUMN suspension_reason TEXT');
 if (!pharmacyCols.includes('approved_by_admin_id')) db.exec('ALTER TABLE pharmacies ADD COLUMN approved_by_admin_id INTEGER');
 if (!pharmacyCols.includes('status_updated_at')) db.exec('ALTER TABLE pharmacies ADD COLUMN status_updated_at TEXT');
+if (!pharmacyCols.includes('verification_stage')) db.exec("ALTER TABLE pharmacies ADD COLUMN verification_stage TEXT NOT NULL DEFAULT 'PENDING'");
+if (!pharmacyCols.includes('correction_reason')) db.exec('ALTER TABLE pharmacies ADD COLUMN correction_reason TEXT');
 
 const adminAuditCols = db.prepare("PRAGMA table_info(admin_audit_logs)").all().map(c => c.name);
 if (adminAuditCols.length && !adminAuditCols.includes('reason')) db.exec('ALTER TABLE admin_audit_logs ADD COLUMN reason TEXT');
@@ -413,6 +438,17 @@ const pharmacyStatusUpdate = db.transaction(() => {
     UPDATE pharmacies
     SET verified = CASE WHEN verification_status = 'VERIFIED' THEN 1 ELSE 0 END
     WHERE verified IS NULL OR verified <> CASE WHEN verification_status = 'VERIFIED' THEN 1 ELSE 0 END;
+  `);
+  db.exec(`
+    UPDATE pharmacies
+    SET verification_stage = CASE verification_status
+      WHEN 'VERIFIED' THEN 'APPROVED'
+      WHEN 'REJECTED' THEN 'REJECTED'
+      WHEN 'SUSPENDED' THEN 'SUSPENDED'
+      ELSE 'PENDING'
+    END
+    WHERE verification_stage IS NULL OR verification_stage = ''
+      OR (verification_stage = 'PENDING' AND verification_status <> 'PENDING');
   `);
 });
 pharmacyStatusUpdate();

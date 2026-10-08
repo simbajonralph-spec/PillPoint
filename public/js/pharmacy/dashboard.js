@@ -57,8 +57,20 @@
         || a.medicine_name.localeCompare(b.medicine_name))
       .slice(0, 5);
     const highDemandLowStock = paiData.demand_analysis?.restock_recommendations || [];
-    const verificationStatus = data.pharmacy.verification_status
-      || (data.pharmacy.verified ? 'VERIFIED' : 'PENDING');
+    const verificationStatus = data.pharmacy.verification_stage
+      || (data.pharmacy.verification_status === 'VERIFIED'
+        ? 'APPROVED'
+        : data.pharmacy.verification_status || (data.pharmacy.verified ? 'APPROVED' : 'PENDING'));
+    const verificationLabels = {
+      PENDING: 'Pending verification',
+      UNDER_REVIEW: 'Under review',
+      CORRECTION_REQUIRED: 'Correction required',
+      APPROVED: 'Approved',
+      VERIFIED: 'Approved',
+      REJECTED: 'Rejected',
+      SUSPENDED: 'Suspended',
+      REVERIFICATION_REQUIRED: 'Reverification required',
+    };
 
     function actionCard(title, count, detail, href, tone) {
       return `
@@ -113,6 +125,16 @@
       return `<span class="badge ${tone}">${escapeHtml(severity || 'REVIEW')}</span>`;
     }
 
+    function paiPanel(title, description, entries, emptyMessage, renderEntry) {
+      return `
+        <section class="card dashboard-table-card">
+          <div class="dashboard-section-heading"><div><h3>${escapeHtml(title)}</h3><p>${escapeHtml(description)}</p></div><strong>${entries.length}</strong></div>
+          ${entries.length
+            ? `<div class="grid" style="gap:12px;">${entries.map(renderEntry).join('')}</div>`
+            : `<div class="empty-state"><p>${escapeHtml(emptyMessage)}</p></div>`}
+        </section>`;
+    }
+
     content.innerHTML = `
       <section class="pharmacy-dashboard-header">
         <div>
@@ -120,8 +142,14 @@
           <h2>${escapeHtml(data.pharmacy.name)}</h2>
           <p>${escapeHtml(data.pharmacy.address)}</p>
         </div>
-        <span class="badge ${verificationStatus === 'VERIFIED' ? 'badge-verified' : 'badge-unverified'}">${verificationStatus === 'VERIFIED' ? 'Verified pharmacy' : verificationStatus === 'SUSPENDED' ? 'Suspended' : verificationStatus === 'REJECTED' ? 'Rejected' : 'Verification pending'}</span>
+        <span class="badge ${verificationStatus === 'APPROVED' || verificationStatus === 'VERIFIED' ? 'badge-verified' : ['SUSPENDED', 'REJECTED', 'CORRECTION_REQUIRED'].includes(verificationStatus) ? 'badge-warning' : 'badge-unverified'}">${escapeHtml(verificationLabels[verificationStatus] || verificationStatus)}</span>
       </section>
+      ${['CORRECTION_REQUIRED', 'REVERIFICATION_REQUIRED'].includes(verificationStatus) ? `
+        <section class="alert alert-warning mt-16">
+          <strong>${escapeHtml(verificationLabels[verificationStatus])}</strong>
+          <p class="mt-8">${escapeHtml(data.pharmacy.correction_reason || 'Please review your latest notification, update your Pharmacy Profile, and resubmit for verification.')}</p>
+          <a class="btn btn-primary btn-sm mt-12" href="/profile.html">Review and resubmit</a>
+        </section>` : ''}
 
       <nav class="dashboard-quick-actions dashboard-control-actions mt-16" aria-label="Pharmacy actions">
         <a class="btn btn-primary" href="/pharmacy/alerts.html">View Low Stock</a>

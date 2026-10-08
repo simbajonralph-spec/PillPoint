@@ -41,7 +41,7 @@ router.post('/register', (req, res) => {
   const hash = bcrypt.hashSync(password, 10);
 
   if (role === 'pharmacy_staff') {
-    const { pharmacy_name, pharmacy_address, owner_first_name, owner_last_name, business_permit, latitude, longitude, description, hours } = req.body;
+    const { pharmacy_name, pharmacy_address, owner_first_name, owner_last_name, business_permit, pharmacy_logo, latitude, longitude, description, hours } = req.body;
     const lat = parseFloat(latitude);
     const lng = parseFloat(longitude);
     if (!pharmacy_name || !pharmacy_address || !owner_first_name || !owner_last_name || !business_permit) {
@@ -53,12 +53,15 @@ router.post('/register', (req, res) => {
     if (!/^data:(application\/pdf|image\/(png|jpe?g|webp));base64,/.test(business_permit)) {
       return res.status(422).json({ error: 'Business permit must be a PDF, PNG, JPG, or WEBP file.' });
     }
+    if (pharmacy_logo && !/^data:image\/(png|jpe?g|webp);base64,/.test(pharmacy_logo)) {
+      return res.status(422).json({ error: 'Pharmacy logo must be a PNG, JPG, or WEBP image.' });
+    }
 
     const tx = db.transaction(() => {
       const pharmacyInfo = db.prepare(`
-        INSERT INTO pharmacies (name, address, latitude, longitude, phone, business_email, owner_first_name, owner_last_name, business_permit, verified, description, hours)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
-      `).run(pharmacy_name.trim(), pharmacy_address.trim(), lat, lng, phone.trim(), email.trim(), owner_first_name.trim(), owner_last_name.trim(), business_permit, (description || '').trim() || null, (hours || '').trim() || null);
+        INSERT INTO pharmacies (name, address, latitude, longitude, phone, business_email, owner_first_name, owner_last_name, business_permit, pharmacy_logo, verified, description, hours)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+      `).run(pharmacy_name.trim(), pharmacy_address.trim(), lat, lng, phone.trim(), email.trim(), owner_first_name.trim(), owner_last_name.trim(), business_permit, pharmacy_logo || null, (description || '').trim() || null, (hours || '').trim() || null);
 
       const userInfo = db.prepare(`
         INSERT INTO users (name, username, phone, email, password_hash, role, pharmacy_id) VALUES (?, ?, ?, ?, ?, 'pharmacy_staff', ?)
@@ -69,6 +72,30 @@ router.post('/register', (req, res) => {
         `${pharmacy_name} has been registered and is pending admin verification. You can manage inventory in the meantime.`,
         'info'
       );
+
+      const registeredPharmacy = db.prepare(`
+        SELECT id, name, address, phone, business_email, owner_first_name, owner_last_name,
+          description, hours, business_permit, pharmacy_logo
+        FROM pharmacies WHERE id = ?
+      `).get(pharmacyInfo.lastInsertRowid);
+      const ownerName = [registeredPharmacy.owner_first_name, registeredPharmacy.owner_last_name].filter(Boolean).join(' ');
+      const adminMessage = [
+        `Branch: ${registeredPharmacy.name}`,
+        `Owner: ${ownerName || 'Not provided'}`,
+        `Email: ${registeredPharmacy.business_email || 'Not provided'}`,
+        `Phone: ${registeredPharmacy.phone || 'Not provided'}`,
+        `Address: ${registeredPharmacy.address}`,
+        `Business permit: ${registeredPharmacy.business_permit ? 'Submitted' : 'Not submitted'}`,
+        `Pharmacy logo: ${registeredPharmacy.pharmacy_logo ? 'Submitted' : 'Not submitted'}`,
+        registeredPharmacy.description ? `Description: ${registeredPharmacy.description}` : null,
+        registeredPharmacy.hours ? `Operating hours: ${registeredPharmacy.hours}` : null,
+      ].filter(Boolean).join('\n');
+      const insertAdminNotification = db.prepare(`
+        INSERT INTO notifications (user_id, title, message, type) VALUES (?, ?, ?, 'pharmacy_registration')
+      `);
+      db.prepare("SELECT id FROM users WHERE role = 'admin'").all().forEach(admin => {
+        insertAdminNotification.run(admin.id, `New pharmacy registration: ${registeredPharmacy.name}`, adminMessage);
+      });
 
       return userInfo.lastInsertRowid;
     });
