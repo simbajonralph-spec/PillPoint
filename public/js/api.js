@@ -57,7 +57,7 @@ function stockBadge(qty, threshold) {
   return '<span class="badge badge-available">Available</span>';
 }
 
-const PIE_COLORS = ['#14B8A6', '#0B1220', '#F59E0B', '#3B82F6', '#EF4444', '#8B5CF6'];
+const PIE_COLORS = ['#14B8A6', '#64748B', '#F59E0B', '#3B82F6', '#EF4444', '#8B5CF6'];
 
 // Builds an inline SVG pie/donut chart + legend markup from [{label, value}].
 // Pure vanilla SVG (no chart library) so it works with the no-build-step frontend.

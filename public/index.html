@@ -6,18 +6,25 @@
 <title>PillPoint — Find & Reserve Medicine Nearby</title>
 <link rel="icon" type="image/svg+xml" href="/img/logo-mark.svg" />
 <link rel="stylesheet" href="/css/style.css" />
+<script>
+try { document.documentElement.setAttribute('data-theme', localStorage.getItem('pp-theme') === 'light' ? 'light' : 'dark'); } catch (e) { document.documentElement.setAttribute('data-theme', 'dark'); }
+</script>
 </head>
 <body>
 
 <nav class="landing-nav">
-  <div class="brand"><img src="/img/logo-mark.svg" alt="PillPoint" width="32" height="32" style="border-radius:8px;" />PillPoint</div>
+  <div class="brand"><img src="/img/logo-mark.svg" alt="PillPoint" width="32" height="32" style="border-radius:8px;" /><span class="brand-title">PillPoint</span></div>
   <div class="nav-links">
-    <a href="/login.html" class="btn btn-outline" style="color:#fff;border-color:rgba(255,255,255,.25)">Login</a>
+    <button type="button" class="topbar-icon theme-toggle" id="theme-toggle"></button>
+    <a href="/login.html" class="btn btn-outline">Login</a>
     <a href="/register.html" class="btn btn-primary">Register</a>
   </div>
 </nav>
 
 <section class="hero">
+  <div class="hero-orb hero-orb-teal"></div>
+  <div class="hero-orb hero-orb-navy"></div>
+  <span class="hero-eyebrow"><i></i> Real-time medicine availability</span>
   <h1>Find the medicine you need at the pharmacy nearest you</h1>
   <p>PillPoint helps you search real-time stock, compare prices across pharmacies, and reserve medicine before you go — all from one place.</p>
   <form class="search-cta" onsubmit="event.preventDefault(); window.location.href='/register.html'">
@@ -26,11 +33,12 @@
   </form>
   <div class="hero-actions mt-24">
     <a href="/register.html" class="btn btn-primary">Get Started</a>
-    <a href="/login.html" class="btn btn-outline" style="color:#fff;border-color:rgba(255,255,255,.25)">I already have an account</a>
+    <a href="/login.html" class="btn btn-outline">I already have an account</a>
   </div>
 </section>
 
 <section class="features">
+  <span class="badge badge-brand" style="display:flex;width:max-content;margin:0 auto 14px;text-transform:uppercase;letter-spacing:.08em;">Why PillPoint</span>
   <h2>Everything you need, in one app</h2>
   <p>A modern way to locate medicine and manage reservations</p>
   <div class="grid grid-3">
@@ -87,6 +95,27 @@ if ('IntersectionObserver' in window && revealEls.length) {
 } else {
   revealEls.forEach(el => el.classList.add('revealed'));
 }
+</script>
+
+<script>
+(function () {
+  var btn = document.getElementById('theme-toggle');
+  if (!btn) return;
+  function sync() {
+    var light = document.documentElement.getAttribute('data-theme') === 'light';
+    var label = light ? 'Switch to dark mode (\u263E)' : 'Switch to light mode (\u2600)';
+    btn.textContent = light ? '\u263E' : '\u2600';
+    btn.title = label;
+    btn.setAttribute('aria-label', label);
+  }
+  sync();
+  btn.addEventListener('click', function () {
+    var next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+    try { localStorage.setItem('pp-theme', next); } catch (e) {}
+    document.documentElement.setAttribute('data-theme', next);
+    sync();
+  });
+})();
 </script>
 
 </body>

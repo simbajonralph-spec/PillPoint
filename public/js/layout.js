@@ -1,5 +1,28 @@
 // layout.js — builds the role-aware sidebar + topbar app shell
 
+// ---- Theme: dark is default; light is opt-in via <html data-theme="light"> ----
+const THEME_KEY = 'pp-theme';
+function getTheme() {
+  try { return localStorage.getItem(THEME_KEY) === 'light' ? 'light' : 'dark'; } catch (e) { return 'dark'; }
+}
+function applyTheme(theme) {
+  if (theme === 'light') document.documentElement.setAttribute('data-theme', 'light');
+  else document.documentElement.removeAttribute('data-theme');
+  const label = theme === 'light' ? 'Switch to dark mode (\u263E)' : 'Switch to light mode (\u2600)';
+  const glyph = theme === 'light' ? '\u263E' : '\u2600';
+  document.querySelectorAll('.theme-toggle').forEach(btn => {
+    btn.textContent = glyph;
+    btn.title = label;
+    btn.setAttribute('aria-label', label);
+  });
+}
+function toggleTheme() {
+  const next = getTheme() === 'light' ? 'dark' : 'light';
+  try { localStorage.setItem(THEME_KEY, next); } catch (e) { /* storage unavailable */ }
+  applyTheme(next);
+}
+applyTheme(getTheme());
+
 const NAV = {
   customer: [
     { href: '/dashboard.html', label: 'Dashboard', icon: 'home' },
@@ -66,6 +89,7 @@ function buildShell(user, pageTitle, pageSub) {
             ${pageSub ? `<div class="sub">${pageSub}</div>` : ''}
           </div>
           <div class="topbar-actions">
+            <button type="button" class="topbar-icon theme-toggle" id="theme-toggle"></button>
             <a class="topbar-icon" href="/notifications.html" aria-label="Notifications" title="Notifications">
               ${iconSvg('bell')}<span class="notification-count" id="topbar-notification-count" hidden></span>
             </a>
@@ -90,6 +114,8 @@ function buildShell(user, pageTitle, pageSub) {
     </div>
   `);
 
+  applyTheme(getTheme());
+
   async function logout(e) {
     e.preventDefault();
     await Api.post('/api/auth/logout');
@@ -98,6 +124,8 @@ function buildShell(user, pageTitle, pageSub) {
   document.getElementById('logout-link').addEventListener('click', logout);
   const topbarLogout = document.getElementById('topbar-logout');
   if (topbarLogout) topbarLogout.addEventListener('click', logout);
+  const themeToggle = document.getElementById('theme-toggle');
+  if (themeToggle) themeToggle.addEventListener('click', toggleTheme);
 
   const shell = document.getElementById('app-shell');
   const sidebar = document.getElementById('app-sidebar');

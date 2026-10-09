@@ -200,6 +200,77 @@ test('medical safety and injection-like prompts are refused before contacting Op
   assert.equal(injection.type, 'safety');
 });
 
+test('rate limited OpenAI requests are retried before failing', async t => {
+  const previousFetch = global.fetch;
+  const previousApiKey = process.env.OPENAI_API_KEY;
+  process.env.OPENAI_API_KEY = 'test-key';
+  let calls = 0;
+  global.fetch = async () => {
+    calls += 1;
+    if (calls === 1) {
+      return new Response('rate limited', { status: 429, headers: { 'Retry-After': '0' } });
+    }
+    return new Response(JSON.stringify({
+      choices: [{ message: { content: JSON.stringify({ ok: true }) } }],
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  };
+  t.after(() => {
+    global.fetch = previousFetch;
+    if (previousApiKey === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = previousApiKey;
+  });
+
+  const result = await requestJsonCompletion({ messages: [], schemaName: 'test', schema: {} });
+  assert.deepEqual(result, { ok: true });
+  assert.equal(calls, 2);
+});
+
+test('persistent rate limiting fails explicitly as an unavailable provider', async t => {
+  const previousFetch = global.fetch;
+  const previousApiKey = process.env.OPENAI_API_KEY;
+  process.env.OPENAI_API_KEY = 'test-key';
+  let calls = 0;
+  global.fetch = async () => {
+    calls += 1;
+    return new Response('rate limited', { status: 429, headers: { 'Retry-After': '0' } });
+  };
+  t.after(() => {
+    global.fetch = previousFetch;
+    if (previousApiKey === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = previousApiKey;
+  });
+
+  await assert.rejects(
+    requestJsonCompletion({ messages: [], schemaName: 'test', schema: {} }),
+    PaiUnavailableError
+  );
+  assert.equal(calls, 3);
+});
+
+test('exhausted account quota fails immediately without pointless retries', async t => {
+  const previousFetch = global.fetch;
+  const previousApiKey = process.env.OPENAI_API_KEY;
+  process.env.OPENAI_API_KEY = 'test-key';
+  let calls = 0;
+  global.fetch = async () => {
+    calls += 1;
+    return new Response(JSON.stringify({
+      error: { message: 'You have no credits remaining.', type: 'insufficient_quota', code: 'credit_balance_exhausted' },
+    }), { status: 429, headers: { 'Content-Type': 'application/json' } });
+  };
+  t.after(() => {
+    global.fetch = previousFetch;
+    if (previousApiKey === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = previousApiKey;
+  });
+
+  await assert.rejects(
+    requestJsonCompletion({ messages: [], schemaName: 'test', schema: {} }),
+    error => error instanceof PaiUnavailableError && /HTTP 429: You have no credits remaining/.test(error.message)
+  );
+  assert.equal(calls, 1);
+});
+
 test('missing OpenAI configuration fails explicitly without affecting other PillPoint routes', async t => {
   const previousApiKey = process.env.OPENAI_API_KEY;
   delete process.env.OPENAI_API_KEY;

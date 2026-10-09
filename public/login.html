@@ -6,17 +6,23 @@
 <title>Login — PillPoint</title>
 <link rel="icon" type="image/svg+xml" href="/img/logo-mark.svg" />
 <link rel="stylesheet" href="/css/style.css" />
+<script>
+try { document.documentElement.setAttribute('data-theme', localStorage.getItem('pp-theme') === 'light' ? 'light' : 'dark'); } catch (e) { document.documentElement.setAttribute('data-theme', 'dark'); }
+</script>
 </head>
 <body>
 <div class="auth-wrap">
+  <div class="auth-orb auth-orb-teal"></div>
+  <div class="auth-orb auth-orb-deep"></div>
+  <button type="button" class="topbar-icon auth-theme-toggle theme-toggle" id="theme-toggle"></button>
   <div class="auth-card card card-elevated">
     <div class="brand">
       <img src="/img/logo-mark.svg" alt="PillPoint" width="34" height="34" style="border-radius:9px;" />
-      <div style="font-weight:800;font-size:19px;color:var(--navy)">PillPoint</div>
+      <div class="brand-title">PillPoint</div>
     </div>
 
     <div class="auth-foot" style="margin-top:0;margin-bottom:16px;">
-      <span class="badge" style="background:#ECFDF5;color:#0F766E;"><span class="icon">&#128137;</span> Pharmacy &amp; Medicine Reservation Platform</span>
+      <span class="badge badge-brand"><span class="icon">&#128137;</span> Pharmacy &amp; Medicine Reservation Platform</span>
     </div>
 
     <div id="alert-box"></div>
@@ -43,7 +49,7 @@
     </form>
 
     <div class="auth-foot">
-      Don't have an account? <a href="/register.html" style="color:var(--teal-dark);font-weight:600">Register</a>
+      Don't have an account? <a href="/register.html">Register</a>
     </div>
   </div>
 </div>
@@ -92,6 +98,26 @@ Api.get('/api/auth/me').then(({ user }) => {
     else window.location.href = '/dashboard.html';
   }
 });
+</script>
+<script>
+(function () {
+  var btn = document.getElementById('theme-toggle');
+  if (!btn) return;
+  function sync() {
+    var light = document.documentElement.getAttribute('data-theme') === 'light';
+    var label = light ? 'Switch to dark mode (\u263E)' : 'Switch to light mode (\u2600)';
+    btn.textContent = light ? '\u263E' : '\u2600';
+    btn.title = label;
+    btn.setAttribute('aria-label', label);
+  }
+  sync();
+  btn.addEventListener('click', function () {
+    var next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+    try { localStorage.setItem('pp-theme', next); } catch (e) {}
+    document.documentElement.setAttribute('data-theme', next);
+    sync();
+  });
+})();
 </script>
 </body>
 </html>
