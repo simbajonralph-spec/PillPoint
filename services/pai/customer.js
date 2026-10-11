@@ -1,7 +1,7 @@
 const db = require('../../db/database');
 const { eligibleBatchQuantitySql, publishedProductSql } = require('../inventory-batches');
 const { buildMedicineCandidates, normalizeText, searchVerifiedInventory } = require('./search');
-const { PaiUnavailableError, requestJsonCompletion } = require('./openai');
+const { PaiUnavailableError, requestJsonCompletion } = require('./gemini');
 
 const intentSchema = {
   type: 'object',
@@ -28,9 +28,31 @@ const replySchema = {
 };
 
 const SAFE_FAILURE_MESSAGE = 'P.A.I. is temporarily unavailable. You can continue using PillPoint’s standard search.';
+const CUSTOMER_FALLBACK_NOTICE = 'AI-generated help is temporarily unavailable. These results use current PillPoint catalog and availability data.';
 
 function safeMessage(type, message, extra = {}) {
   return { type, message, ...extra };
+}
+
+function logCustomerFallback(operation, error) {
+  const details = error?.diagnostic || {};
+  console.info(`P.A.I. customer fallback: ${JSON.stringify({
+    source: 'deterministic_database',
+    role: 'customer',
+    operation,
+    model: details.model || process.env.GEMINI_MODEL || 'gemini-3.8-flash',
+    durationMs: Number.isFinite(details.durationMs) ? details.durationMs : null,
+    status: Number.isInteger(details.status) ? details.status : null,
+    providerCode: details.providerCode || null,
+    attempts: Number.isInteger(details.attempts) ? details.attempts : 0,
+    failureClass: details.failureClass || null,
+    outcome: 'deterministic_fallback',
+    fallbackUsed: true,
+  })}`);
+}
+
+function withCustomerFallbackNotice(result, used) {
+  return used ? { ...result, source: 'deterministic', notice: CUSTOMER_FALLBACK_NOTICE } : result;
 }
 
 function unsafeRequestResponse(message) {
@@ -43,11 +65,15 @@ function unsafeRequestResponse(message) {
   return null;
 }
 
-async function interpretCustomerRequest(message) {
+async function interpretCustomerRequest(message, requestOptions = {}) {
   const parsed = await requestJsonCompletion({
     schemaName: 'pillpoint_customer_intent',
     schema: intentSchema,
     maxTokens: 250,
+    diagnosticRole: 'customer',
+    diagnosticOperation: 'intent_parse',
+    timeoutMs: requestOptions.timeoutMs,
+    maxAttempts: requestOptions.maxAttempts,
     messages: [
       {
         role: 'system',
@@ -99,11 +125,15 @@ async function interpretCustomerRequest(message) {
   return intent;
 }
 
-async function generateGroundedMessage(instruction, facts) {
+async function generateGroundedMessage(instruction, facts, requestOptions = {}) {
   const result = await requestJsonCompletion({
     schemaName: 'pillpoint_grounded_response',
     schema: replySchema,
     maxTokens: 180,
+    diagnosticRole: 'customer',
+    diagnosticOperation: 'grounded_answer',
+    timeoutMs: requestOptions.timeoutMs,
+    maxAttempts: requestOptions.maxAttempts,
     messages: [
       {
         role: 'system',
@@ -189,9 +219,87 @@ function searchCatalogTopic(topic, maxPrice) {
   return { medicines, rows };
 }
 
+function deterministicCustomerIntent(message) {
+  const text = String(message || '').trim().slice(0, 500);
+  const normalized = normalizeText(text);
+  const maxPriceMatch = text.match(/(?:under|below|within|less than|max|budget|up to)\s*(?:php\s*)?(\d+(?:\.\d+)?)/i);
+  let max_price = maxPriceMatch ? Number(maxPriceMatch[1]) : null;
+  if (max_price !== null && (!Number.isFinite(max_price) || max_price < 0 || max_price > 1000000)) max_price = null;
+  const pharmacies = db.prepare(`
+    SELECT id, name FROM pharmacies
+    WHERE COALESCE(verification_status, CASE WHEN verified = 1 THEN 'VERIFIED' ELSE 'PENDING' END) = 'VERIFIED'
+  `).all();
+  const pharmacy = pharmacies
+    .filter(item => normalized.includes(normalizeText(item.name)))
+    .sort((a, b) => b.name.length - a.name.length)[0] || null;
+
+  const medicines = db.prepare('SELECT id, name, category FROM medicines ORDER BY length(name) DESC, name').all();
+  const exactMatches = medicines.filter(item => normalized.includes(normalizeText(item.name)));
+  const candidates = exactMatches.length ? exactMatches : medicines.filter(item => {
+    const baseName = normalizeText(item.name).split(' ')
+      .filter(token => !/^\d+(?:mg|mcg|g|ml|l|iu|%)?$/i.test(token))
+      .join(' ');
+    return baseName.length >= 4 && normalized.includes(baseName);
+  });
+  const requestedNames = [...new Set(candidates.map(item => item.name))];
+  const exact = exactMatches[0] || null;
+  const medicine = exact || (requestedNames.length === 1 ? candidates[0] : null);
+  if (candidates.length > 1 && !exact) {
+    return {
+      clarification: 'I found several catalog versions. Which one do you mean?',
+      suggestions: candidates.slice(0, 5).map(item => ({ id: item.id, name: item.name, category: item.category })),
+    };
+  }
+
+  if (!medicine) {
+    if (/which verified pharmacies|verified pharmacies have|compare prices|available options|find|search|do you have|where can i buy|where can i find/i.test(text)) {
+      return { clarification: 'Which medicine should I look for in PillPoint?', suggestions: [] };
+    }
+    return null;
+  }
+
+  const intent = /\b(reserve|reservation|book|hold)\b/i.test(text)
+    ? 'reservation_assistance'
+    : /\b(alert|notify|notification|watch|when available|if available)\b/i.test(text)
+      ? 'availability_watch'
+      : /\b(what is|information|details|describe|about)\b/i.test(text)
+        ? 'medicine_information'
+        : 'medicine_search';
+  const quantityMatch = text.match(/\b(?:reserve|book|hold)\s+(\d+)\b/i)
+    || text.match(/\b(\d+)\s+(?:units?|packs?|boxes?)\b/i);
+  const quantity = quantityMatch ? Number(quantityMatch[1]) : null;
+  return {
+    intent,
+    medicine: medicine.name,
+    max_price: Number.isFinite(max_price) ? max_price : null,
+    quantity: Number.isInteger(quantity) && quantity > 0 && quantity <= 100 ? quantity : null,
+    pharmacy: pharmacy?.name || null,
+    topic: null,
+  };
+}
+
+function deterministicListingMessage(rows, medicineName, maxPrice) {
+  if (!rows.length) {
+    return `No currently available verified PillPoint listing matched ${medicineName || 'that medicine'}${maxPrice == null ? '' : ` within ₱${Number(maxPrice).toFixed(2)}`}.`;
+  }
+  const cheapest = rows[0];
+  return `${rows.length} currently available verified listing${rows.length === 1 ? '' : 's'} for ${medicineName || cheapest.medicine_name}, ordered by listed price. The lowest listed price is ₱${Number(cheapest.price).toFixed(2)} at ${cheapest.pharmacy_name}, with ${Number(cheapest.available_quantity)} available (${Number(cheapest.reserved_quantity)} reserved).`;
+}
+
+async function interpretOrFallback(text) {
+  try {
+    return await interpretCustomerRequest(text);
+  } catch (error) {
+    if (!(error instanceof PaiUnavailableError)) throw error;
+    logCustomerFallback('intent_parse', error);
+    return { ...deterministicCustomerIntent(text), _paiFallbackUsed: true };
+  }
+}
+
 async function searchWithIntent(text, userId, intent) {
+  let fallbackUsed = !!intent._paiFallbackUsed;
   if (intent.intent !== 'medicine_search') {
-    return safeMessage('not_search', 'Use the P.A.I. Assistant for questions, reservations, or availability alerts.');
+    return withCustomerFallbackNotice(safeMessage('not_search', 'Use the P.A.I. Assistant for questions, reservations, or availability alerts.'), fallbackUsed);
   }
 
   const resolved = resolveMedicine(intent.medicine);
@@ -200,13 +308,13 @@ async function searchWithIntent(text, userId, intent) {
     : { medicines: [], rows: [] };
   if (!resolved.medicine && !topicResults.medicines.length) {
     recordSearch(userId, text, []);
-    return safeMessage(
+    return withCustomerFallbackNotice(safeMessage(
       resolved.suggestions.length ? 'suggestion' : 'not_found',
       resolved.suggestions.length
         ? 'I could not confidently identify that medicine. Please choose a possible match.'
         : 'I could not confidently identify a medicine in your request. Try a specific medicine name.',
       { medicine_id: null, suggestions: resolved.suggestions.map(item => ({ id: item.id, name: item.name, category: item.category })) }
-    );
+    ), fallbackUsed);
   }
 
   let rows = resolved.medicine
@@ -234,12 +342,28 @@ async function searchWithIntent(text, userId, intent) {
       address: row.address,
     })),
   };
-  const message = rows.length
-    ? await generateGroundedMessage('Summarize the current matching listings and price ordering without adding facts.', facts)
-    : await generateGroundedMessage('Explain that no currently available verified listing matched these filters. Do not suggest a substitute.', facts);
+  let message;
+  let explanationSource = 'deterministic';
+  if (fallbackUsed) {
+    fallbackUsed = true;
+    message = deterministicListingMessage(rows, resolved.medicine?.name || topicResults.medicines[0]?.name, intent.max_price);
+  } else {
+    try {
+      message = rows.length
+        ? await generateGroundedMessage('Summarize the current matching listings and price ordering without adding facts.', facts)
+        : await generateGroundedMessage('Explain that no currently available verified listing matched these filters. Do not suggest a substitute.', facts);
+      explanationSource = 'ai';
+    } catch (error) {
+      if (!(error instanceof PaiUnavailableError)) throw error;
+      logCustomerFallback('grounded_answer', error);
+      fallbackUsed = true;
+      message = deterministicListingMessage(rows, resolved.medicine?.name || topicResults.medicines[0]?.name, intent.max_price);
+    }
+  }
 
-  return {
+  return withCustomerFallbackNotice({
     type: rows.length ? 'search_result' : 'not_available',
+    source: fallbackUsed ? 'deterministic' : explanationSource,
     message,
     medicine_id: resolved.medicine?.id || (topicResults.medicines.length === 1 ? topicResults.medicines[0].id : null),
     medicine_name: resolved.medicine?.name || (topicResults.medicines.length === 1 ? topicResults.medicines[0].name : null),
@@ -251,7 +375,7 @@ async function searchWithIntent(text, userId, intent) {
     results: rows.slice(0, 10),
     categories: db.prepare('SELECT DISTINCT category FROM medicines WHERE category IS NOT NULL ORDER BY category').all().map(row => row.category),
     shortageMedicineIds: [],
-  };
+  }, fallbackUsed);
 }
 
 async function searchForCustomer(query, userId) {
@@ -261,7 +385,11 @@ async function searchForCustomer(query, userId) {
   const safety = unsafeRequestResponse(text);
   if (safety) return safety;
 
-  const intent = await interpretCustomerRequest(text);
+  const intent = await interpretOrFallback(text);
+  if (intent?.clarification) {
+    return withCustomerFallbackNotice(safeMessage('clarification', intent.clarification, { suggestions: intent.suggestions || [] }), intent._paiFallbackUsed);
+  }
+  if (!intent) return safeMessage('clarification', 'I can search the PillPoint catalog. Tell me a specific medicine name and strength.');
   return searchWithIntent(text, userId, intent);
 }
 
@@ -314,7 +442,11 @@ async function handleCustomerMessage(message, options = {}) {
   const safety = unsafeRequestResponse(text);
   if (safety) return safety;
 
-  const intent = await interpretCustomerRequest(text);
+  const intent = await interpretOrFallback(text);
+  if (intent?.clarification) {
+    return withCustomerFallbackNotice(safeMessage('clarification', intent.clarification, { suggestions: intent.suggestions || [] }), intent._paiFallbackUsed);
+  }
+  if (!intent) return safeMessage('clarification', 'Tell me a specific medicine name and strength to search PillPoint.');
   if (intent.intent === 'medicine_search') {
     return searchWithIntent(text, options.userId, intent);
   }
@@ -322,14 +454,16 @@ async function handleCustomerMessage(message, options = {}) {
   if (intent.intent === 'reservation_assistance') {
     const reservation = await buildReservationOptions(intent, options.contextInventoryIds);
     if (!reservation.results.length) {
-      return {
+      return withCustomerFallbackNotice({
         ...reservation,
+        source: 'deterministic',
         message: reservation.medicine_name
           ? `I could not find a currently available verified listing for ${reservation.medicine_name}${intent.pharmacy ? ` at ${intent.pharmacy}` : ''}.`
           : reservation.message,
         can_watch: !!reservation.medicine_id,
-      };
+      }, intent._paiFallbackUsed);
     }
+    let fallbackUsed = !!intent._paiFallbackUsed;
     const rows = reservation.results.map(row => ({
       medicine: row.medicine_name,
       pharmacy: row.pharmacy_name,
@@ -337,40 +471,51 @@ async function handleCustomerMessage(message, options = {}) {
       stock_quantity: row.available_quantity,
       available_quantity: row.available_quantity,
     }));
-    reservation.message = await generateGroundedMessage(
-      'Show reservation options and remind the user a reservation is created only after their explicit confirmation.',
-      { requested_quantity: reservation.quantity, verified_listings: rows }
-    );
-    return reservation;
+    if (fallbackUsed) {
+      reservation.message = `I found ${rows.length} verified available option${rows.length === 1 ? '' : 's'} for ${reservation.medicine_name}. Review a listing and explicitly confirm before a reservation is created.`;
+    } else {
+      try {
+        reservation.message = await generateGroundedMessage(
+          'Show reservation options and remind the user a reservation is created only after their explicit confirmation.',
+          { requested_quantity: reservation.quantity, verified_listings: rows }
+        );
+      } catch (error) {
+        if (!(error instanceof PaiUnavailableError)) throw error;
+        logCustomerFallback('reservation_answer', error);
+        fallbackUsed = true;
+        reservation.message = `I found ${rows.length} verified available option${rows.length === 1 ? '' : 's'} for ${reservation.medicine_name}. Review a listing and explicitly confirm before a reservation is created.`;
+      }
+    }
+    return withCustomerFallbackNotice({ ...reservation, source: fallbackUsed ? 'deterministic' : 'ai' }, fallbackUsed);
   }
 
   if (intent.intent === 'availability_watch') {
     const resolved = resolveMedicine(intent.medicine);
     if (!resolved.medicine) {
-      return safeMessage(
+      return withCustomerFallbackNotice(safeMessage(
         resolved.suggestions.length ? 'suggestion' : 'not_found',
         resolved.suggestions.length
           ? 'I could not confidently identify that medicine. Choose the medicine you want to watch.'
           : 'Name a specific PillPoint medicine to set an availability alert.',
         { suggestions: resolved.suggestions.map(item => ({ id: item.id, name: item.name, category: item.category })) }
-      );
+      ), intent._paiFallbackUsed);
     }
     const pharmacy = findVerifiedPharmacy(intent.pharmacy);
     if (intent.pharmacy && !pharmacy) {
-      return safeMessage(
+      return withCustomerFallbackNotice(safeMessage(
         'not_found',
         `I could not verify a pharmacy matching "${intent.pharmacy}". Choose a verified pharmacy from PillPoint, or ask for an alert across all verified pharmacies.`
-      );
+      ), intent._paiFallbackUsed);
     }
     const rows = filterByPharmacy(searchVerifiedInventory({ medicine_id: resolved.medicine.id }), intent.pharmacy);
     if (rows.length) {
-      return safeMessage(
+      return withCustomerFallbackNotice(safeMessage(
         'already_available',
         `${resolved.medicine.name} already has verified available listings in PillPoint. Review the current listings before placing a reservation.`,
         { medicine_id: resolved.medicine.id, medicine_name: resolved.medicine.name, results: rows.slice(0, 10) }
-      );
+      ), intent._paiFallbackUsed);
     }
-    return safeMessage(
+    return withCustomerFallbackNotice(safeMessage(
       'availability_watch_confirmation',
       `PillPoint has no currently available verified listing for ${resolved.medicine.name}${intent.pharmacy ? ` at ${intent.pharmacy}` : ''}. Set an alert to be notified if it becomes available?`,
       {
@@ -379,52 +524,83 @@ async function handleCustomerMessage(message, options = {}) {
         pharmacy_id: pharmacy ? pharmacy.id : null,
         pharmacy_name: pharmacy ? pharmacy.name : null,
       }
-    );
+    ), intent._paiFallbackUsed);
   }
 
   if (intent.intent === 'medicine_information') {
     const resolved = resolveMedicine(intent.medicine);
     if (!resolved.medicine) {
-      return safeMessage(
+      return withCustomerFallbackNotice(safeMessage(
         resolved.suggestions.length ? 'suggestion' : 'not_found',
         resolved.suggestions.length
           ? 'I could not confidently identify that medicine. Choose a medicine to view information stored in PillPoint.'
           : 'Please name a specific medicine to look for information stored in PillPoint.',
         { suggestions: resolved.suggestions.map(item => ({ id: item.id, name: item.name, category: item.category })) }
-      );
+      ), intent._paiFallbackUsed);
     }
     const medicine = db.prepare('SELECT id, name, category, description FROM medicines WHERE id = ?').get(resolved.medicine.id);
     if (!medicine.description) {
-      return safeMessage(
+      return withCustomerFallbackNotice(safeMessage(
         'medicine_information',
         `PillPoint does not have general information stored for ${medicine.name}. For personal medical advice, consult a licensed healthcare professional.`,
         { medicine: { id: medicine.id, name: medicine.name, category: medicine.category, description: null } }
-      );
+      ), intent._paiFallbackUsed);
     }
-    const summary = await generateGroundedMessage(
-      'Explain only the stored general description. Do not add dosage, safety, treatment, or patient-specific advice. Remind the user that this is general information, not medical advice.',
-      { medicine: medicine.name, category: medicine.category, description: medicine.description }
-    );
-    return safeMessage('medicine_information', summary, {
+    let summary;
+    let explanationSource = 'deterministic';
+    let fallbackUsed = !!intent._paiFallbackUsed;
+    if (fallbackUsed) {
+      summary = `PillPoint describes ${medicine.name} as: ${medicine.description}. This is general catalog information, not personal medical advice.`;
+    } else {
+      try {
+        summary = await generateGroundedMessage(
+          'Explain only the stored general description. Do not add dosage, safety, treatment, or patient-specific advice. Remind the user that this is general information, not medical advice.',
+          { medicine: medicine.name, category: medicine.category, description: medicine.description }
+        );
+        explanationSource = 'ai';
+      } catch (error) {
+        if (!(error instanceof PaiUnavailableError)) throw error;
+        logCustomerFallback('medicine_information', error);
+        fallbackUsed = true;
+        summary = `PillPoint describes ${medicine.name} as: ${medicine.description}. This is general catalog information, not personal medical advice.`;
+      }
+    }
+    return withCustomerFallbackNotice({ ...safeMessage('medicine_information', summary, {
       medicine: { id: medicine.id, name: medicine.name, category: medicine.category, description: medicine.description },
-    });
+    }), source: fallbackUsed ? 'deterministic' : explanationSource }, fallbackUsed);
   }
 
   if (intent.intent === 'navigation') {
-    return safeMessage('navigation', 'You can search medicines on Search Medicines, review requests in My Reservations, and view your updates in Notifications.', {
+    return withCustomerFallbackNotice(safeMessage('navigation', 'You can search medicines on Search Medicines, review requests in My Reservations, and view your updates in Notifications.', {
       links: [
         { label: 'Search Medicines', href: '/search.html' },
         { label: 'My Reservations', href: '/reservations.html' },
         { label: 'Notifications', href: '/notifications.html' },
       ],
-    });
+    }), intent._paiFallbackUsed);
   }
 
-  const answer = await generateGroundedMessage(
-    'Answer briefly about PillPoint customer features only. For anything outside the known facts, say what PillPoint can help with instead.',
-    { available_features: ['search verified medicine listings', 'compare current listed prices', 'view pharmacy availability', 'place customer-confirmed reservations', 'set availability alerts', 'view existing reservations and notifications'] }
-  );
-  return safeMessage(intent.intent === 'unsupported' ? 'safety' : 'info', answer);
+  let answer;
+  let fallbackUsed = !!intent._paiFallbackUsed;
+  if (fallbackUsed) {
+    answer = 'I can help search verified medicine listings, compare current prices, show availability, guide customer-confirmed reservations, and set availability alerts.';
+  } else {
+    try {
+      answer = await generateGroundedMessage(
+        'Answer briefly about PillPoint customer features only. For anything outside the known facts, say what PillPoint can help with instead.',
+        { available_features: ['search verified medicine listings', 'compare current listed prices', 'view pharmacy availability', 'place customer-confirmed reservations', 'set availability alerts', 'view existing reservations and notifications'] }
+      );
+    } catch (error) {
+      if (!(error instanceof PaiUnavailableError)) throw error;
+      logCustomerFallback('general_response', error);
+      fallbackUsed = true;
+      answer = 'I can help search verified medicine listings, compare current prices, show availability, guide customer-confirmed reservations, and set availability alerts.';
+    }
+  }
+  return withCustomerFallbackNotice({
+    ...safeMessage(intent.intent === 'unsupported' ? 'safety' : 'info', answer),
+    source: fallbackUsed ? 'deterministic' : 'ai',
+  }, fallbackUsed);
 }
 
 function createAvailabilityWatch(customerId, medicineId, pharmacyId = null) {
@@ -489,4 +665,5 @@ module.exports = {
   createAvailabilityWatch,
   interpretCustomerRequest,
   resolveMedicine,
+  deterministicCustomerIntent,
 };
