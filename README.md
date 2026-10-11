@@ -45,11 +45,23 @@ npm start
 
 Then open **http://localhost:3000** in your browser.
 
-P.A.I. customer assistant and natural-language search features use the OpenAI API. Copy
-`.env.example` to `.env` and set
-`OPENAI_API_KEY` there before starting the server. Keep `.env` private and never put the key in
-frontend files. PillPoint's standard search, reservations, and other core features continue to work
-without an OpenAI key; OpenAI-backed customer P.A.I. features report when their provider is unavailable.
+P.A.I. customer assistant and natural-language search features use Google's official
+[`@google/genai`](https://github.com/googleapis/js-genai) SDK and Gemini Developer API. Copy
+`.env.example` to `.env` and set `GEMINI_API_KEY` before starting the server. The default
+`GEMINI_MODEL` is `gemini-3.8-flash`; set it to another model available to your API key if needed.
+Keep `.env` private and never put the key in frontend files. Gemini 3.8 Flash supports structured
+output and currently lists free standard-tier token pricing through Google AI Studio; model availability,
+rate limits, and free-tier eligibility can vary by account and change over time. Check Google's
+[model documentation](https://ai.google.dev/gemini-api/docs/models/gemini-3.8-flash) and
+[pricing and free-tier details](https://ai.google.dev/gemini-api/docs/pricing) before deployment.
+Google currently indicates that free-tier content may be used to improve its products; review its
+current data-use terms before sending real customer prompts.
+PillPoint's standard search, reservations, and other core features continue to work without a
+Gemini key. Customer, Pharmacy, and Admin P.A.I. use current database-backed results or analytics
+when Gemini is unavailable and label deterministic answers accordingly. Retry attempts, backoff,
+request timeout, and short provider cooldown can be tuned with the `PAI_GEMINI_*` values in
+`.env.example`; the retry limit is capped at three attempts. Free-tier quota exhaustion
+uses a separate one-hour default cooldown, which provider retry guidance can extend.
 
 Pharmacy P.A.I. insights are calculated from the pharmacy's existing inventory, reservations,
 stock transactions, medicine batches, listed prices, and search activity. They are advisory only:
