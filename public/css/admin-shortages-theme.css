@@ -1,0 +1,39 @@
+/* Navy and teal theme for system-wide medicine shortages. */
+.admin-shortages-page .content {
+  color: #e2e8f0;
+  background: radial-gradient(ellipse at 96% 0%, rgba(13,148,136,.11), transparent 35%), #0b1220;
+}
+.admin-shortages-shell .topbar { border-bottom-color: #1e2b3b; background: #0b1220; color: #e2e8f0; }
+.admin-shortages-shell .topbar h1 { color: #f1f5f9; }
+.admin-shortages-shell .topbar .sub { color: #91a5ba; }
+.admin-shortages-shell .topbar-profile-toggle { border-color: #26374a; background: #111d2d; color: #e2e8f0; }
+.admin-shortages-shell .topbar-profile-avatar { background: rgba(20,184,166,.16); color: #54ddc5; }
+.admin-shortages-shell .topbar-user-menu { border-color: #26374a; background: #111d2d; }
+.admin-shortages-shell .topbar-user-menu a,.admin-shortages-shell .topbar-user-menu button { color: #e2e8f0; }
+.admin-shortages-shell .topbar-user-menu a:hover,.admin-shortages-shell .topbar-user-menu button:hover { background: #1a2b40; }
+.admin-shortages-page .content .card,
+.admin-shortages-page .content .empty-state {
+  border: 1px solid #26364a;
+  border-radius: 13px;
+  background: linear-gradient(145deg,#121f30,#101a29);
+  color: #e2e8f0;
+  box-shadow: 0 8px 22px rgba(0,0,0,.18);
+}
+.admin-shortages-page .content .empty-state { min-height: 320px; align-content: center; }
+.admin-shortages-page .empty-state h3 { color: #f1f5f9; }
+.admin-shortages-page .empty-state p { color: #9aafc3; }
+.admin-shortages-page .empty-state .icon { color: #4cddc5; }
+.admin-shortages-page table { width: 100%; border-collapse: collapse; color: #dce6f0; }
+.admin-shortages-page thead th { border-bottom: 1px solid rgba(45,212,191,.19); background: #0b1726; color: #a9bfd2; }
+.admin-shortages-page tbody tr { background: #111d2d; }
+.admin-shortages-page tbody tr:nth-child(even) { background: #0e1a29; }
+.admin-shortages-page tbody tr:hover { background: rgba(13,69,78,.38); }
+.admin-shortages-page tbody td { border-bottom: 1px solid rgba(148,163,184,.13); color: #dce6f0; }
+.admin-shortages-page .muted { color: #9aafc3; }
+.admin-shortages-page .badge-out { border: 1px solid rgba(248,113,113,.2); background: rgba(220,38,38,.16); color: #fda4af; }
+.admin-shortages-page .alert-error { border-color: rgba(248,113,113,.25); background: rgba(127,29,29,.2); color: #fecaca; }
+@media (max-width: 760px) {
+  .admin-shortages-page .content { padding: 16px 12px 28px; }
+  .admin-shortages-page .content .card { overflow-x: auto; }
+  .admin-shortages-page table { min-width: 620px; }
+}

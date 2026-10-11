@@ -5,6 +5,7 @@
 <title>Audit Logs — PillPoint</title>
 <link rel="icon" type="image/svg+xml" href="/img/logo-mark.svg" />
 <link rel="stylesheet" href="/css/style.css" />
+<link rel="stylesheet" href="/css/admin-audit-theme.css" />
 <style>
 .audit-filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
 .audit-filter-grid .field { min-width: 0; }
@@ -20,6 +21,8 @@
 (async function () {
   const user = await guardPage(['admin'], 'Audit Log', 'Administrative actions and system activity');
   if (!user) return;
+  document.body.classList.add('admin-audit-page');
+  document.getElementById('app-shell')?.classList.add('admin-audit-shell');
   const content = document.getElementById('page-content');
   content.innerHTML = `
     <form id="audit-filter-form" class="card">

@@ -5,6 +5,7 @@
 <title>Manage Pharmacies — PillPoint</title>
 <link rel="icon" type="image/svg+xml" href="/img/logo-mark.svg" />
 <link rel="stylesheet" href="/css/style.css" />
+<link rel="stylesheet" href="/css/admin-pharmacies-theme.css" />
 <style>
 .pharmacy-branch-row { cursor: pointer; }
 .pharmacy-branch-row:hover { background: #f0fdfa; }
@@ -39,6 +40,8 @@
 (async function () {
   const user = await guardPage(['admin'], 'Manage Pharmacies', 'Verify, search, or notify registered pharmacies');
   if (!user) return;
+  document.body.classList.add('admin-pharmacies-page');
+  document.getElementById('app-shell')?.classList.add('admin-pharmacies-shell');
   const content = document.getElementById('page-content');
   content.innerHTML = `
     <div class="filters-row">

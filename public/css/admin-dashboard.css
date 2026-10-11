@@ -1,0 +1,118 @@
+.admin-dashboard { padding: 22px 26px 36px; }
+.admin-dashboard h2, .admin-dashboard h3 { color: #102b48; }
+.admin-dashboard .card { border-color: #dce9f4; border-radius: 13px; box-shadow: 0 4px 16px rgba(19, 53, 81, .055); }
+.admin-welcome { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin: 0 0 22px; }
+.admin-welcome-copy { display: flex; align-items: center; gap: 15px; }
+.admin-welcome-copy h2 { margin: 0 0 4px; font-size: clamp(22px, 2vw, 28px); font-weight: 800; letter-spacing: -.035em; }
+.admin-welcome-copy p { color: #7187a3; font-size: 14px; }
+.admin-sun { display: grid; width: 54px; height: 54px; flex: 0 0 54px; place-items: center; border-radius: 50%; background: linear-gradient(145deg,#fff9e5,#ffefbd); color: #f5a900; font-size: 33px; box-shadow: 0 6px 16px rgba(245,169,0,.12); }
+.admin-dashboard-search { display: flex; align-items: center; gap: 10px; width: min(390px, 40%); min-height: 44px; padding: 0 10px 0 13px; border: 1px solid #deebf6; border-radius: 13px; background: rgba(255,255,255,.92); color: #6884a2; box-shadow: 0 5px 18px rgba(19,53,81,.055); }
+.admin-dashboard-search > span { display: inline-flex; }
+.admin-dashboard-search input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: #183653; font-size: 12px; }
+.admin-dashboard-search input::placeholder { color: #8196ae; }
+.admin-dashboard-search kbd { flex: 0 0 auto; padding: 3px 6px; border: 1px solid #dce7f1; border-radius: 5px; background: #f7faff; color: #607891; font: 600 10px 'Segoe UI',sans-serif; }
+.admin-metric-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 12px; margin-bottom: 16px; }
+.admin-metric-link { min-width: 0; }
+.admin-metric-card { position: relative; display: grid; min-height: 145px; grid-template-columns: 52px 1fr; grid-template-rows: 38px auto 1fr; column-gap: 13px; align-content: start; overflow: hidden; padding: 16px 18px; border: 1px solid #dce9f4; border-radius: 13px; background: rgba(255,255,255,.95); box-shadow: 0 4px 14px rgba(19,53,81,.055); transition: transform .18s ease, box-shadow .18s ease; }
+.admin-metric-link:hover .admin-metric-card { transform: translateY(-2px); box-shadow: 0 9px 22px rgba(19,53,81,.1); }
+.admin-metric-icon { display: grid; width: 50px; height: 50px; grid-row: 1 / span 2; place-items: center; border-radius: 50%; }
+.admin-metric-label { align-self: center; color: #375572; font-size: 13px; font-weight: 650; }
+.admin-metric-card > strong { grid-column: 1 / -1; margin-top: 4px; color: #102c49; font-size: 29px; font-weight: 800; line-height: 1.05; }
+.admin-metric-card > small { grid-column: 1 / -1; align-self: end; margin-top: 7px; color: #8295aa; font-size: 11px; }
+.admin-metric-card.green .admin-metric-icon { background: #d8f6e9; color: #139c5c; }
+.admin-metric-card.blue .admin-metric-icon { background: #e1edff; color: #2472dd; }
+.admin-metric-card.amber .admin-metric-icon { background: #fff0c9; color: #d78900; }
+.admin-metric-card.rose .admin-metric-icon { background: #ffe1e8; color: #e34462; }
+.admin-sparkline { position: absolute; right: 15px; bottom: 15px; width: 72px; height: 26px; opacity: .55; border-bottom: 2px solid currentColor; border-radius: 50% 20% 45% 12%; transform: skewY(-12deg); }
+.admin-metric-card.green .admin-sparkline { color: #14a75b; }.admin-metric-card.blue .admin-sparkline { color: #3487ec; }.admin-metric-card.amber .admin-sparkline { color: #efa900; }.admin-metric-card.rose .admin-sparkline { color: #ec5d77; }
+.admin-dashboard-main-grid { display: grid; grid-template-columns: minmax(0,1.55fr) minmax(300px,.95fr); gap: 14px; align-items: stretch; }
+.admin-reservations-card,.admin-map-card { min-width: 0; padding: 16px; }
+.admin-section-heading { display: flex; align-items: center; gap: 11px; min-width: 0; margin-bottom: 14px; }
+.admin-section-heading > div { min-width: 0; flex: 1; }
+.admin-section-heading h2 { margin: 0 0 3px; font-size: 16px; font-weight: 750; }
+.admin-section-heading p { color: #8194aa; font-size: 11px; }
+.admin-heading-icon { display: grid; width: 36px; height: 36px; flex: 0 0 36px; place-items: center; border-radius: 11px; }
+.admin-heading-icon.teal { background: #e0faf5; color: #08a591; }.admin-heading-icon.amber { background: #fff3d6; color: #d89000; }.admin-heading-icon.violet { background: #f0eaff; color: #7956db; }
+.admin-view-link { display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; padding: 8px 10px; border: 1px solid #dce9f4; border-radius: 10px; color: #0d827c; font-size: 11px; font-weight: 700; }
+.admin-view-link:hover { border-color: #8bd8cc; background: #effbf8; }
+.admin-table-wrap { overflow-x: auto; }
+.admin-reservation-table { width: 100%; border-collapse: collapse; color: #23435f; font-size: 11px; }
+.admin-reservation-table thead th { padding: 10px 8px; background: #f2f8fc; color: #68819b; font-size: 10px; font-weight: 750; text-align: left; text-transform: uppercase; white-space: nowrap; }
+.admin-reservation-table thead th:first-child { border-radius: 8px 0 0 8px; }.admin-reservation-table thead th:last-child { border-radius: 0 8px 8px 0; }
+.admin-reservation-table tbody td { padding: 10px 8px; border-bottom: 1px solid #edf3f8; vertical-align: middle; }
+.admin-reservation-table tbody tr:last-child td { border-bottom: 0; }.admin-reservation-table tbody tr[hidden] { display: none; }
+.admin-reservation-table td strong { display: block; color: #173856; font-size: 11px; }
+.admin-reservation-table td small { display: block; max-width: 190px; margin-top: 3px; overflow: hidden; color: #8599af; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.admin-date-cell { white-space: nowrap; color: #7087a0; }
+.admin-icon-link { display: inline-flex; align-items: center; gap: 5px; padding: 6px 8px; border: 1px solid #deebf6; border-radius: 8px; color: #527593; white-space: nowrap; }
+.admin-icon-link:hover { color: #078d86; border-color: #8ad8cc; }.admin-icon-link b { font-size: 17px; line-height: 12px; }
+.admin-map-frame { position: relative; height: 260px; overflow: hidden; border: 1px solid #d9e8f2; border-radius: 11px; background: linear-gradient(135deg,#e7f3ed,#d8eff0 48%,#eff5e8); }
+.admin-map-frame #admin-pharmacy-map { width: 100%; height: 100%; z-index: 0; }
+.admin-map-empty { position: absolute; inset: auto 12px 12px; z-index: 1; padding: 8px; border-radius: 8px; background: rgba(255,255,255,.9); color: #657d92; font-size: 11px; text-align: center; pointer-events: none; }
+.admin-map-footer { display: flex; align-items: center; gap: 8px; padding: 12px 2px 0; color: #72889f; font-size: 11px; }
+.admin-map-footer strong { color: #173856; }.admin-map-dot,.admin-online i { width: 8px; height: 8px; border-radius: 50%; background: #18b991; box-shadow: 0 0 0 3px #e1f8f2; }
+.admin-map-divider { height: 15px; margin: 0 3px; border-left: 1px solid #dce7f0; }
+.admin-bottom-metrics { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 12px; margin-top: 14px; }
+.admin-bottom-card { display: flex; align-items: flex-start; gap: 11px; min-width: 0; min-height: 102px; padding: 14px; border: 1px solid #dce9f4; border-radius: 12px; background: #fff; }
+.admin-bottom-card.health { background: linear-gradient(125deg,#f2fcf7,#fff); border-color: #d5f0e4; }.admin-bottom-card.inventory { background: linear-gradient(125deg,#f3f8ff,#fff); border-color: #d9e8fb; }.admin-bottom-card.customers { background: linear-gradient(125deg,#f8f4ff,#fff); border-color: #e8dffc; }.admin-bottom-card.shortages { background: linear-gradient(125deg,#fff7f7,#fff); border-color: #f7dfe4; }
+.admin-bottom-icon { display: grid; width: 40px; height: 40px; flex: 0 0 40px; place-items: center; border-radius: 50%; background: rgba(20,184,166,.12); color: #0b9a85; }
+.admin-bottom-card.inventory .admin-bottom-icon { background: #e5efff; color: #2777dc; }.admin-bottom-card.customers .admin-bottom-icon { background: #f0e7ff; color: #8152d9; }.admin-bottom-card.shortages .admin-bottom-icon { background: #ffe5e9; color: #df4962; }
+.admin-bottom-card > div { position: relative; display: flex; min-width: 0; flex-direction: column; gap: 4px; }
+.admin-bottom-card strong { color: #244461; font-size: 12px; }.admin-bottom-card span:not(.admin-bottom-icon) { color: #8296aa; font-size: 10px; line-height: 1.4; }.admin-bottom-card b { color: #102d4a; font-size: 19px; }
+.admin-online { display: inline-flex; align-items: center; gap: 7px; color: #159d64 !important; font-size: 11px !important; }
+.admin-online i { width: 7px; height: 7px; background: #19ae69; box-shadow: none; }
+.admin-bottom-card a { position: absolute; top: 0; right: 0; display: inline-flex; color: #728ba4; }
+.admin-action-section { margin-top: 22px; }.admin-action-heading { margin: 0 0 12px; }.admin-action-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 12px; }
+.admin-action-card { min-width: 0; padding: 14px; border: 1px solid #e0eaf3; border-radius: 12px; background: rgba(255,255,255,.82); }
+.admin-action-card > div { display: flex; align-items: center; justify-content: space-between; gap: 7px; }.admin-action-card > div strong { color: #284662; font-size: 12px; }
+.admin-action-count { padding: 3px 8px; border-radius: 20px; background: #edf3f8; color: #60768b; font-size: 11px; font-weight: 750; }.admin-action-count.has-items { background: #fff0d2; color: #ad7000; }
+.admin-action-card ul { min-height: 58px; margin: 11px 0; padding-left: 17px; color: #637d95; font-size: 10px; line-height: 1.6; }.admin-action-card p { min-height: 58px; margin: 11px 0; color: #8799aa; font-size: 10px; }
+.admin-action-card a { color: #098c83; font-size: 10px; font-weight: 750; }.admin-action-card a:hover { text-decoration: underline; }
+.admin-insights { margin-top: 18px; padding: 0 16px; }.admin-insights > summary { display: flex; align-items: center; gap: 11px; min-height: 66px; cursor: pointer; list-style: none; }.admin-insights > summary::-webkit-details-marker { display: none; }
+.admin-insights > summary > span:nth-child(2) { display: flex; flex: 1; flex-direction: column; gap: 3px; }.admin-insights > summary strong { color: #193a58; font-size: 13px; }.admin-insights > summary small { color: #8498ad; font-size: 10px; }.admin-insights > summary > b { color: #8296aa; font-size: 18px; }
+.admin-insight-badges { display: flex; flex-wrap: wrap; gap: 7px; margin: 0 0 13px; }.admin-insight-badges span { padding: 6px 9px; border: 1px solid #e0eaf3; border-radius: 20px; background: #f7fafc; color: #58728c; font-size: 10px; }
+.admin-insight-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 9px; }.admin-insight-grid article,.admin-report-card > div { display: grid; gap: 6px; padding: 12px; border: 1px solid #e4edf5; border-radius: 10px; background: #fbfdff; }.admin-insight-grid strong { color: #24435e; font-size: 11px; }.admin-insight-grid p,.admin-insight-grid small,.admin-muted { color: #70869b; font-size: 10px; line-height: 1.5; }
+.admin-report-card { display: grid; gap: 8px; padding: 13px; border: 1px solid #deebf4; border-radius: 10px; background: #fbfdff; }.admin-report-card > strong { color: #193a58; }.admin-report-card > p,.admin-report-card > small,.admin-report-card > div span,.admin-report-card > div small { color: #6c8298; font-size: 10px; line-height: 1.5; }.admin-report-card > div b { color: #294a66; font-size: 11px; }
+/* Keep the admin overview aligned with PillPoint's navy and teal identity. */
+.admin-sun { background: linear-gradient(145deg,#43d0b1,#14b8a6); color: #052b32; box-shadow: 0 7px 18px rgba(20,184,166,.2); }
+.admin-metric-card.green .admin-metric-icon,.admin-metric-card.blue .admin-metric-icon,.admin-metric-card.amber .admin-metric-icon,.admin-metric-card.rose .admin-metric-icon { background: #e0f8f3; color: #078f83; }
+.admin-metric-card.green .admin-sparkline,.admin-metric-card.blue .admin-sparkline,.admin-metric-card.amber .admin-sparkline,.admin-metric-card.rose .admin-sparkline { color: #0eaa98; }
+.admin-bottom-card.health,.admin-bottom-card.inventory,.admin-bottom-card.customers,.admin-bottom-card.shortages { background: linear-gradient(125deg,#f1fbf9,#fff); border-color: #d9eee9; }
+.admin-bottom-card.inventory .admin-bottom-icon,.admin-bottom-card.customers .admin-bottom-icon,.admin-bottom-card.shortages .admin-bottom-icon { background: #def7f1; color: #0a9486; }
+.admin-dashboard-search:focus-within { border-color: #36c4b0; box-shadow: 0 0 0 3px rgba(20,184,166,.12); }
+.admin-action-count.has-items { background: #e4f7f2; color: #087e72; }
+.admin-dashboard { color: #e2e8f0; background: radial-gradient(ellipse at 88% 0%, rgba(13,148,136,.1), transparent 35%), #0b1220; }
+.admin-dashboard-shell .topbar { border-bottom-color: #1e2b3b; background: #0b1220; color: #e2e8f0; }
+.admin-dashboard-shell .topbar h1 { color: #f1f5f9; }.admin-dashboard-shell .topbar .sub { color: #94a9bd; }
+.admin-dashboard-shell .topbar-profile-toggle { border-color: #26374a; background: #111d2d; color: #e2e8f0; }
+.admin-dashboard-shell .topbar-profile-avatar { background: rgba(20,184,166,.16); color: #55ddc5; }
+.admin-dashboard-shell .topbar-user-menu { border-color: #26374a; background: #111d2d; }.admin-dashboard-shell .topbar-user-menu a,.admin-dashboard-shell .topbar-user-menu button { color: #e2e8f0; }.admin-dashboard-shell .topbar-user-menu a:hover,.admin-dashboard-shell .topbar-user-menu button:hover { background: #1a2b40; }
+.admin-dashboard h2,.admin-dashboard h3 { color: #f1f5f9; }
+.admin-welcome-copy h2 { color: #f8fafc; }.admin-welcome-copy p { color: #94a9bd; }
+.admin-dashboard-search { border-color: #26374a; background: #111d2d; color: #9bb0c5; box-shadow: none; }
+.admin-dashboard-search input { color: #e2e8f0; }.admin-dashboard-search input::placeholder { color: #8194a8; }
+.admin-dashboard-search kbd { border-color: #34465a; background: #172437; color: #b4c5d6; }
+.admin-metric-card,.admin-dashboard .card { border-color: #263549; background: linear-gradient(145deg,#121f30,#101a29); color: #e2e8f0; box-shadow: 0 8px 22px rgba(0,0,0,.16); }
+.admin-metric-card > strong { color: #f8fafc; }.admin-metric-label { color: #c6d4e2; }.admin-metric-card > small { color: #91a4b9; }
+.admin-metric-card.green .admin-metric-icon,.admin-metric-card.blue .admin-metric-icon,.admin-metric-card.amber .admin-metric-icon,.admin-metric-card.rose .admin-metric-icon { background: rgba(20,184,166,.16); color: #4cddc5; }
+.admin-bottom-card.health,.admin-bottom-card.inventory,.admin-bottom-card.customers,.admin-bottom-card.shortages { border-color: #263549; background: linear-gradient(145deg,#121f30,#101a29); }
+.admin-bottom-card strong { color: #e5edf5; }.admin-bottom-card span:not(.admin-bottom-icon) { color: #91a4b9; }.admin-bottom-card b { color: #f8fafc; }
+.admin-bottom-icon,.admin-bottom-card.inventory .admin-bottom-icon,.admin-bottom-card.customers .admin-bottom-icon,.admin-bottom-card.shortages .admin-bottom-icon { background: rgba(20,184,166,.16); color: #4cddc5; }
+.admin-section-heading h2 { color: #f1f5f9; }.admin-section-heading p { color: #90a4b8; }
+.admin-heading-icon.teal,.admin-heading-icon.amber,.admin-heading-icon.violet { background: rgba(20,184,166,.15); color: #4cddc5; }
+.admin-view-link { border-color: #2b4054; color: #58d9c3; background: rgba(2,24,38,.3); }.admin-view-link:hover { border-color: #14b8a6; background: rgba(20,184,166,.12); }
+.admin-reservation-table { color: #d7e2ed; }.admin-reservation-table thead th { background: #0b1726; color: #9fb4c8; }
+.admin-reservation-table tbody td { border-bottom-color: #243449; }.admin-reservation-table td strong { color: #e6eef6; }.admin-reservation-table td small,.admin-date-cell { color: #8fa4b9; }
+.admin-icon-link { border-color: #30445a; color: #b7cada; background: #142235; }.admin-icon-link:hover { color: #57ddc5; border-color: #14b8a6; }
+.admin-map-footer { color: #9aafc2; }.admin-map-footer strong { color: #e2e8f0; }.admin-map-divider { border-color: #304256; }
+.admin-action-card { border-color: #26374b; background: #111d2d; }.admin-action-card > div strong { color: #dce7f1; }
+.admin-action-count { background: #1b2a3d; color: #a9bbcd; }.admin-action-count.has-items { background: rgba(20,184,166,.15); color: #61dfc9; }
+.admin-action-card ul,.admin-action-card p { color: #9aadc0; }.admin-action-card a { color: #50d5bd; }
+.admin-insights > summary strong { color: #e3edf6; }.admin-insights > summary small,.admin-insights > summary > b { color: #91a6bb; }
+.admin-insight-badges span { border-color: #293b50; background: #152337; color: #b2c4d5; }
+.admin-insight-grid article,.admin-report-card,.admin-report-card > div { border-color: #293b50; background: #0d1928; }
+.admin-insight-grid strong,.admin-report-card > strong,.admin-report-card > div b { color: #e0eaf4; }.admin-insight-grid p,.admin-insight-grid small,.admin-muted,.admin-report-card > p,.admin-report-card > small,.admin-report-card > div span,.admin-report-card > div small { color: #9aadc0; }
+.admin-empty-state { color: #c4d2df; }.admin-empty-state span { color: #93a7bb; }
+@media (max-width: 1100px) { .admin-metric-grid,.admin-bottom-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); }.admin-action-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@media (max-width: 850px) { .admin-dashboard-main-grid { grid-template-columns: 1fr; }.admin-map-frame { height: 300px; } }
+@media (max-width: 640px) { .admin-dashboard { padding: 17px 13px 28px; }.admin-welcome { align-items: stretch; flex-direction: column; }.admin-dashboard-search { width: 100%; }.admin-metric-grid,.admin-bottom-metrics,.admin-action-grid,.admin-insight-grid { grid-template-columns: 1fr 1fr; gap: 8px; }.admin-metric-card { min-height: 135px; padding: 13px; grid-template-columns: 42px 1fr; }.admin-metric-icon { width: 40px; height: 40px; }.admin-metric-label { font-size: 11px; }.admin-metric-card > strong { font-size: 25px; }.admin-sparkline { width: 48px; }.admin-bottom-card { padding: 10px; gap: 8px; }.admin-bottom-icon { width: 32px; height: 32px; flex-basis: 32px; }.admin-bottom-card strong { font-size: 10px; }.admin-bottom-card b { font-size: 17px; }.admin-section-heading { flex-wrap: wrap; }.admin-view-link { margin-left: auto; }.admin-reservation-table { min-width: 640px; } }

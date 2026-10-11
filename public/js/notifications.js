@@ -3,6 +3,10 @@
   if (!user) return;
   if (user.role === 'pharmacy_staff') document.body.classList.add('pharmacy-notifications-page');
   else if (user.role === 'customer') document.body.classList.add('customer-notifications-page');
+  else if (user.role === 'admin') {
+    document.body.classList.add('admin-notifications-page');
+    document.getElementById('app-shell')?.classList.add('admin-notifications-shell');
+  }
 
   const content = document.getElementById('page-content');
   content.innerHTML = `

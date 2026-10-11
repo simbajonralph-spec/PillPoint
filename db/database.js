@@ -340,18 +340,9 @@ if (!inventoryCols.includes('deployed_at')) db.exec("ALTER TABLE inventory ADD C
 if (!inventoryCols.includes('folder_id')) db.exec("ALTER TABLE inventory ADD COLUMN folder_id INTEGER REFERENCES folders(id)");
 
 db.exec(`
-UPDATE folders SET status = 'ready', deployed_at = NULL
-WHERE status = 'deployed' AND id != (
-  SELECT active.id FROM folders active
-  WHERE active.pharmacy_id = folders.pharmacy_id AND active.status = 'deployed'
-  ORDER BY COALESCE(active.deployed_at, active.created_at) DESC, active.id DESC LIMIT 1
-);
 UPDATE inventory SET deployed = 0, deployed_at = NULL
-WHERE folder_id IS NULL OR folder_id IN (SELECT id FROM folders WHERE status != 'deployed');
-UPDATE inventory SET deployed = 1
-WHERE folder_id IN (SELECT id FROM folders WHERE status = 'deployed');
-CREATE UNIQUE INDEX IF NOT EXISTS folders_one_deployed_per_pharmacy
-ON folders(pharmacy_id) WHERE status = 'deployed';
+WHERE folder_id IS NULL OR folder_id IN (SELECT id FROM folders WHERE status = 'archived');
+DROP INDEX IF EXISTS folders_one_deployed_per_pharmacy;
 `);
 
 db.exec(`

@@ -48,11 +48,11 @@ Then open **http://localhost:3000** in your browser.
 P.A.I. customer assistant and natural-language search features use Google's official
 [`@google/genai`](https://github.com/googleapis/js-genai) SDK and Gemini Developer API. Copy
 `.env.example` to `.env` and set `GEMINI_API_KEY` before starting the server. The default
-`GEMINI_MODEL` is `gemini-3.8-flash`; set it to another model available to your API key if needed.
-Keep `.env` private and never put the key in frontend files. Gemini 3.8 Flash supports structured
-output and currently lists free standard-tier token pricing through Google AI Studio; model availability,
-rate limits, and free-tier eligibility can vary by account and change over time. Check Google's
-[model documentation](https://ai.google.dev/gemini-api/docs/models/gemini-3.8-flash) and
+`GEMINI_MODEL` is `gemini-3.6-flash`; set it to another model available to your API key if needed.
+Keep `.env` private and never put the key in frontend files. Gemini 3.6 Flash supports structured
+output. Model availability, pricing, rate limits, and free-tier eligibility can vary by account and
+change over time. Check Google's
+[model documentation](https://ai.google.dev/gemini-api/docs/models/gemini-3.6-flash) and
 [pricing and free-tier details](https://ai.google.dev/gemini-api/docs/pricing) before deployment.
 Google currently indicates that free-tier content may be used to improve its products; review its
 current data-use terms before sending real customer prompts.

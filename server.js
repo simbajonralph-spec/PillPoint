@@ -41,6 +41,25 @@ app.use('/api/pai', paiRoutes);
 
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Last-resort error handler: API clients (including the P.A.I. widget) expect
+// JSON, so never leak Express's default HTML error page on /api routes.
+app.use('/api', (err, req, res, next) => {
+  if (res.headersSent) return next(err);
+  const status = Number(err && (err.status || err.statusCode)) || 500;
+  if (err && err.type === 'entity.parse.failed') {
+    return res.status(400).json({ error: 'Request body must be valid JSON.' });
+  }
+  if (err && err.type === 'entity.too.large') {
+    return res.status(413).json({ error: 'Request body is too large.' });
+  }
+  if (status >= 500) {
+    console.error(`Unhandled API error on ${req.method} ${req.originalUrl}:`, err && err.stack ? err.stack : err);
+    return res.status(status).json({ error: 'Something went wrong on the server. Please try again.' });
+  }
+  console.error(`API request failed on ${req.method} ${req.originalUrl} (status ${status}):`, err && err.message);
+  return res.status(status).json({ error: (err && err.message) || 'Request failed.' });
+});
+
 app.listen(PORT, () => {
   console.log(`\nPillPoint is running: http://localhost:${PORT}\n`);
 });

@@ -28,6 +28,12 @@ function handleRoleAssistantFailure(error, res) {
   return res.status(500).json({ error: 'P.A.I. could not explain the current PillPoint analytics.' });
 }
 
+function handleDataFailure(error, res, message) {
+  console.error('P.A.I. data request failed unexpectedly:', error && error.message);
+  if (res.headersSent) return;
+  return res.status(500).json({ error: message });
+}
+
 function validateRoleAssistantMessage(req, res) {
   const message = req.body?.message;
   if (typeof message !== 'string' || !message.trim() || message.trim().length > MAX_MESSAGE_LENGTH) {
@@ -62,60 +68,80 @@ router.get('/search', requireAuth, requireRole('customer'), async (req, res) => 
 });
 
 router.post('/availability-watch', requireAuth, requireRole('customer'), (req, res) => {
-  const medicineId = Number(req.body?.medicine_id);
-  const pharmacyId = req.body?.pharmacy_id == null || req.body.pharmacy_id === ''
-    ? null
-    : Number(req.body.pharmacy_id);
-  if (!Number.isInteger(medicineId) || medicineId <= 0
-    || (pharmacyId !== null && (!Number.isInteger(pharmacyId) || pharmacyId <= 0))) {
-    return res.status(422).json({ error: 'Choose a valid medicine and optional pharmacy from PillPoint results.' });
-  }
+  try {
+    const medicineId = Number(req.body?.medicine_id);
+    const pharmacyId = req.body?.pharmacy_id == null || req.body.pharmacy_id === ''
+      ? null
+      : Number(req.body.pharmacy_id);
+    if (!Number.isInteger(medicineId) || medicineId <= 0
+      || (pharmacyId !== null && (!Number.isInteger(pharmacyId) || pharmacyId <= 0))) {
+      return res.status(422).json({ error: 'Choose a valid medicine and optional pharmacy from PillPoint results.' });
+    }
 
-  const result = createAvailabilityWatch(req.session.user.id, medicineId, pharmacyId);
-  if (result.error) return res.status(result.status).json({ error: result.error });
-  if (result.already_available) {
-    return res.json({
-      already_available: true,
-      message: `${result.medicine.name} already has a verified available listing. Review current search results.`,
-      listings: result.listings,
+    const result = createAvailabilityWatch(req.session.user.id, medicineId, pharmacyId);
+    if (result.error) return res.status(result.status).json({ error: result.error });
+    if (result.already_available) {
+      return res.json({
+        already_available: true,
+        message: `${result.medicine.name} already has a verified available listing. Review current search results.`,
+        listings: result.listings,
+      });
+    }
+    res.status(result.already_watching ? 200 : 201).json({
+      watch_id: result.watch_id,
+      already_watching: !!result.already_watching,
+      message: result.already_watching
+        ? `You are already watching ${result.medicine.name}.`
+        : `Availability alert set for ${result.medicine.name}. PillPoint will notify you when it becomes available.`,
     });
+  } catch (error) {
+    return handleDataFailure(error, res, 'P.A.I. could not save that availability alert. Please try again.');
   }
-  res.status(result.already_watching ? 200 : 201).json({
-    watch_id: result.watch_id,
-    already_watching: !!result.already_watching,
-    message: result.already_watching
-      ? `You are already watching ${result.medicine.name}.`
-      : `Availability alert set for ${result.medicine.name}. PillPoint will notify you when it becomes available.`,
-  });
 });
 
 router.get('/availability-watch', requireAuth, requireRole('customer'), (req, res) => {
-  const watches = db.prepare(`
-    SELECT w.id, w.medicine_id, m.name AS medicine_name, w.pharmacy_id,
-      p.name AS pharmacy_name, w.active, w.created_at, w.notified_at
-    FROM medicine_availability_watch w
-    JOIN medicines m ON m.id = w.medicine_id
-    LEFT JOIN pharmacies p ON p.id = w.pharmacy_id
-    WHERE w.customer_id = ?
-    ORDER BY w.created_at DESC
-  `).all(req.session.user.id);
-  res.json({ watches });
+  try {
+    const watches = db.prepare(`
+      SELECT w.id, w.medicine_id, m.name AS medicine_name, w.pharmacy_id,
+        p.name AS pharmacy_name, w.active, w.created_at, w.notified_at
+      FROM medicine_availability_watch w
+      JOIN medicines m ON m.id = w.medicine_id
+      LEFT JOIN pharmacies p ON p.id = w.pharmacy_id
+      WHERE w.customer_id = ?
+      ORDER BY w.created_at DESC
+    `).all(req.session.user.id);
+    res.json({ watches });
+  } catch (error) {
+    return handleDataFailure(error, res, 'P.A.I. could not load your availability alerts. Please refresh and try again.');
+  }
 });
 
 router.delete('/availability-watch/:id', requireAuth, requireRole('customer'), (req, res) => {
-  const result = db.prepare(`
-    UPDATE medicine_availability_watch
-    SET active = 0
-    WHERE id = ? AND customer_id = ? AND active = 1
-  `).run(req.params.id, req.session.user.id);
-  if (!result.changes) return res.status(404).json({ error: 'Active availability alert not found.' });
-  res.json({ ok: true });
+  try {
+    const watchId = Number(req.params.id);
+    if (!Number.isInteger(watchId) || watchId <= 0) {
+      return res.status(404).json({ error: 'Active availability alert not found.' });
+    }
+    const result = db.prepare(`
+      UPDATE medicine_availability_watch
+      SET active = 0
+      WHERE id = ? AND customer_id = ? AND active = 1
+    `).run(watchId, req.session.user.id);
+    if (!result.changes) return res.status(404).json({ error: 'Active availability alert not found.' });
+    res.json({ ok: true });
+  } catch (error) {
+    return handleDataFailure(error, res, 'P.A.I. could not cancel that availability alert. Please refresh and try again.');
+  }
 });
 
 router.get('/inventory-insights', requireAuth, requireRole('pharmacy_staff'), (req, res) => {
-  const pharmacyId = req.session.user.pharmacy_id;
-  if (!pharmacyId) return res.status(403).json({ error: 'No pharmacy bound to this user.' });
-  res.json(getInventoryInsights(pharmacyId));
+  try {
+    const pharmacyId = req.session.user.pharmacy_id;
+    if (!pharmacyId) return res.status(403).json({ error: 'No pharmacy bound to this user.' });
+    res.json(getInventoryInsights(pharmacyId));
+  } catch (error) {
+    return handleDataFailure(error, res, 'P.A.I. could not generate inventory insights from current PillPoint data.');
+  }
 });
 
 router.post('/pharmacy-assistant', requireAuth, requireRole('pharmacy_staff'), async (req, res) => {

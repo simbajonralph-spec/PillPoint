@@ -1,0 +1,49 @@
+/* Navy and teal theme for administrative audit activity. */
+.admin-audit-page .content {
+  color: #e2e8f0;
+  background: radial-gradient(ellipse at 96% 0%, rgba(13,148,136,.11), transparent 35%), #0b1220;
+}
+.admin-audit-shell .topbar { border-bottom-color: #1e2b3b; background: #0b1220; color: #e2e8f0; }
+.admin-audit-shell .topbar h1 { color: #f1f5f9; }
+.admin-audit-shell .topbar .sub { color: #91a5ba; }
+.admin-audit-shell .topbar-profile-toggle { border-color: #26374a; background: #111d2d; color: #e2e8f0; }
+.admin-audit-shell .topbar-profile-avatar { background: rgba(20,184,166,.16); color: #54ddc5; }
+.admin-audit-shell .topbar-user-menu { border-color: #26374a; background: #111d2d; }
+.admin-audit-shell .topbar-user-menu a,.admin-audit-shell .topbar-user-menu button { color: #e2e8f0; }
+.admin-audit-shell .topbar-user-menu a:hover,.admin-audit-shell .topbar-user-menu button:hover { background: #1a2b40; }
+.admin-audit-page #audit-filter-form,
+.admin-audit-page .content > .card { border: 1px solid #26364a; border-radius: 13px; background: linear-gradient(145deg,#121f30,#101a29); color: #dce6f0; box-shadow: 0 8px 22px rgba(0,0,0,.18); }
+.admin-audit-page #audit-filter-form { padding: 20px; }
+.admin-audit-page .field label { color: #d6e2ee; }
+.admin-audit-page input,
+.admin-audit-page select { border-color: #2d4258; background: #0b1726; color: #e2e8f0; }
+.admin-audit-page input::placeholder { color: #8298ad; }
+.admin-audit-page input:focus,
+.admin-audit-page select:focus { border-color: #22c7b1; box-shadow: 0 0 0 3px rgba(20,184,166,.13); }
+.admin-audit-page select option { background: #0b1726; color: #e2e8f0; }
+.admin-audit-page .audit-table-wrap { overflow-x: auto; }
+.admin-audit-page .audit-table-wrap table { width: 100%; border-collapse: collapse; color: #dce6f0; }
+.admin-audit-page .audit-table-wrap thead th { border-bottom: 1px solid rgba(45,212,191,.19); background: #0b1726; color: #a9bfd2; }
+.admin-audit-page .audit-table-wrap tbody tr { background: #111d2d; }
+.admin-audit-page .audit-table-wrap tbody tr:nth-child(even) { background: #0e1a29; }
+.admin-audit-page .audit-table-wrap tbody tr:hover { background: rgba(13,69,78,.38); }
+.admin-audit-page .audit-table-wrap tbody td { border-bottom: 1px solid rgba(148,163,184,.13); color: #dce6f0; }
+.admin-audit-page .audit-table-wrap .muted,
+.admin-audit-page .audit-pagination .muted { color: #9aafc3; }
+.admin-audit-page .audit-pagination { border-top-color: #26364a; }
+.admin-audit-page .btn-outline { border-color: #30445a; background: #142235; color: #dce6f0; }
+.admin-audit-page .btn-outline:hover:not(:disabled) { border-color: #14b8a6; background: rgba(20,184,166,.12); color: #effdfa; }
+.admin-audit-page .btn-outline:disabled { border-color: #263549; background: #121d2b; color: #667b90; opacity: .75; }
+.admin-audit-page .btn-primary { border-color: #14b8a6; background: #14b8a6; color: #052b32; }
+.admin-audit-page .btn-primary:hover { border-color: #2dd4bf; background: #2dd4bf; }
+.admin-audit-page .badge-available { border: 1px solid rgba(45,212,191,.22); background: rgba(20,184,166,.14); color: #6ee7d1; }
+.admin-audit-page .badge-warning { border: 1px solid rgba(251,191,36,.2); background: rgba(217,119,6,.16); color: #fcd77a; }
+.admin-audit-page .empty-state,
+.admin-audit-page .empty-state h3 { color: #e2e8f0; }
+.admin-audit-page .empty-state p { color: #9aafc3; }
+.admin-audit-page .alert-error { border-color: rgba(248,113,113,.25); background: rgba(127,29,29,.2); color: #fecaca; }
+@media (max-width: 760px) {
+  .admin-audit-page .content { padding: 16px 12px 28px; }
+  .admin-audit-page #audit-filter-form { padding: 14px; }
+  .admin-audit-page .audit-table-wrap table { min-width: 820px; }
+}

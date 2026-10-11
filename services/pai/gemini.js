@@ -1,7 +1,7 @@
 const { GoogleGenAI } = require('@google/genai');
 
-const DEFAULT_MODEL = 'gemini-3.8-flash';
-const REQUEST_TIMEOUT_MS = boundedEnvInt('PAI_GEMINI_TIMEOUT_MS', 20000, 1000, 60000);
+const DEFAULT_MODEL = 'gemini-3.6-flash';
+const REQUEST_TIMEOUT_MS = boundedEnvInt('PAI_GEMINI_TIMEOUT_MS', 45000, 1000, 60000);
 const MAX_ATTEMPTS = boundedEnvInt('PAI_GEMINI_MAX_ATTEMPTS', 3, 1, 3);
 const RETRY_BASE_DELAY_MS = boundedEnvInt('PAI_GEMINI_RETRY_BASE_MS', 250, 25, 2000);
 const RETRY_MAX_DELAY_MS = boundedEnvInt('PAI_GEMINI_RETRY_MAX_MS', 2000, 50, 5000);
@@ -350,7 +350,19 @@ async function requestJsonCompletion({
       outcome: 'not_configured',
       responseParsingOutcome: 'not_attempted',
     });
-    throw new PaiUnavailableError('P.A.I. is not configured because GEMINI_API_KEY is missing.');
+    const error = new PaiUnavailableError('P.A.I. is not configured because GEMINI_API_KEY is missing.');
+    error.diagnostic = {
+      role: diagnosticRole,
+      operation: diagnosticOperation,
+      model,
+      durationMs: 0,
+      status: null,
+      providerCode: 'MISSING_API_KEY',
+      attempts: 0,
+      failureClass: null,
+      fallbackUsed: false,
+    };
+    throw error;
   }
 
   const cooldown = getCooldownState();
@@ -429,6 +441,7 @@ async function requestJsonCompletion({
             maxOutputTokens: maxTokens,
             responseMimeType: 'application/json',
             responseJsonSchema: toGeminiSchema(schema),
+            ...( /^gemini-3\./i.test(model) ? { thinkingConfig: { thinkingLevel: 'LOW' } } : {}),
             abortSignal: signal,
           },
         }), signal);

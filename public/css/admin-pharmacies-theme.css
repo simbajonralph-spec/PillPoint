@@ -1,0 +1,72 @@
+/* Navy and teal theme for pharmacy verification and management. */
+.admin-pharmacies-page .content {
+  color: #e2e8f0;
+  background: radial-gradient(ellipse at 96% 0%, rgba(13,148,136,.11), transparent 35%), #0b1220;
+}
+.admin-pharmacies-shell .topbar { border-bottom-color: #1e2b3b; background: #0b1220; color: #e2e8f0; }
+.admin-pharmacies-shell .topbar h1 { color: #f1f5f9; }
+.admin-pharmacies-shell .topbar .sub { color: #91a5ba; }
+.admin-pharmacies-shell .topbar-profile-toggle { border-color: #26374a; background: #111d2d; color: #e2e8f0; }
+.admin-pharmacies-shell .topbar-profile-avatar { background: rgba(20,184,166,.16); color: #54ddc5; }
+.admin-pharmacies-shell .topbar-user-menu { border-color: #26374a; background: #111d2d; }
+.admin-pharmacies-shell .topbar-user-menu a,.admin-pharmacies-shell .topbar-user-menu button { color: #e2e8f0; }
+.admin-pharmacies-shell .topbar-user-menu a:hover,.admin-pharmacies-shell .topbar-user-menu button:hover { background: #1a2b40; }
+
+.admin-pharmacies-page .content .field label { color: #d6e2ee; }
+.admin-pharmacies-page .content input,
+.admin-pharmacies-page .content select {
+  border-color: #2d4258;
+  background: #0b1726;
+  color: #e2e8f0;
+}
+.admin-pharmacies-page .content input::placeholder { color: #8298ad; }
+.admin-pharmacies-page .content select option { background: #0b1726; color: #e2e8f0; }
+.admin-pharmacies-page .content input:focus,
+.admin-pharmacies-page .content select:focus { border-color: #22c7b1; box-shadow: 0 0 0 3px rgba(20,184,166,.13); }
+.admin-pharmacies-page .table-wrap {
+  overflow-x: auto;
+  border: 1px solid #26364a;
+  border-radius: 13px;
+  background: linear-gradient(145deg,#121f30,#101a29);
+  box-shadow: 0 8px 22px rgba(0,0,0,.18);
+}
+.admin-pharmacies-page .pharmacies-table { color: #dce6f0; }
+.admin-pharmacies-page .pharmacies-table thead th {
+  border-bottom: 1px solid rgba(45,212,191,.19);
+  background: #0b1726;
+  color: #a9bfd2;
+}
+.admin-pharmacies-page .pharmacies-table tbody tr { background: #111d2d; }
+.admin-pharmacies-page .pharmacies-table tbody tr:nth-child(even) { background: #0e1a29; }
+.admin-pharmacies-page .pharmacies-table tbody tr:hover { background: rgba(13,69,78,.38); }
+.admin-pharmacies-page .pharmacies-table tbody td { border-bottom-color: rgba(148,163,184,.13); color: #dce6f0; }
+.admin-pharmacies-page .pharmacy-branch-row:hover { background: rgba(13,69,78,.38); }
+.admin-pharmacies-page .pharmacy-branch-row:focus-within { outline-color: #22c7b1; }
+.admin-pharmacies-page .pharmacies-table a:not(.btn) { color: #58d9c3; }
+.admin-pharmacies-page .pharmacies-table a:not(.btn):hover { color: #8bf0df; }
+.admin-pharmacies-page .organization-menu-popover {
+  border-color: #2d4258;
+  background: #0b1d2c;
+  box-shadow: 0 14px 32px rgba(0,0,0,.4);
+}
+.admin-pharmacies-page .organization-menu-popover button { color: #dce9f4; }
+.admin-pharmacies-page .organization-menu-popover button:hover { background: rgba(34,211,238,.1); }
+.admin-pharmacies-page .organization-menu-popover button.danger-action { color: #fda4af; }
+.admin-pharmacies-page .organization-menu-popover button.danger-action:hover { background: rgba(220,38,38,.15); }
+.admin-pharmacies-page .btn-outline { border-color: #30445a; background: #142235; color: #dce6f0; }
+.admin-pharmacies-page .btn-outline:hover { border-color: #14b8a6; background: rgba(20,184,166,.12); color: #effdfa; }
+.admin-pharmacies-page .btn-primary { border-color: #14b8a6; background: #14b8a6; color: #052b32; }
+.admin-pharmacies-page .btn-primary:hover { border-color: #2dd4bf; background: #2dd4bf; color: #042b31; }
+.admin-pharmacies-page .badge-verified { border: 1px solid rgba(45,212,191,.22); background: rgba(20,184,166,.14); color: #6ee7d1; }
+.admin-pharmacies-page .badge-unverified { border: 1px solid #35475a; background: #1b2a3d; color: #c2d1df; }
+.admin-pharmacies-page .badge-warning { border: 1px solid rgba(251,191,36,.2); background: rgba(217,119,6,.16); color: #fcd77a; }
+.admin-pharmacies-page .empty-state,
+.admin-pharmacies-page .empty-state h3 { color: #e2e8f0; }
+.admin-pharmacies-page .empty-state p,
+.admin-pharmacies-page .muted { color: #9aafc3; }
+.admin-pharmacies-page .alert-error { border-color: rgba(248,113,113,.25); background: rgba(127,29,29,.2); color: #fecaca; }
+.admin-pharmacies-page dialog { border-color: #2d4258; background: #111d2d; color: #e2e8f0; }
+@media (max-width: 760px) {
+  .admin-pharmacies-page .content { padding: 16px 12px 28px; }
+  .admin-pharmacies-page .pharmacies-table { min-width: 900px; }
+}

@@ -1,0 +1,94 @@
+/* Navy and teal theme for administrator notifications. */
+.admin-notifications-page .content {
+  display: flex;
+  min-height: calc(100vh - 75px);
+  flex-direction: column;
+  gap: 18px;
+  padding: 25px 30px 36px;
+  color: #e2e8f0;
+  background: radial-gradient(ellipse at 100% 0,rgba(20,184,166,.08),transparent 32%),#0b1220;
+}
+.admin-notifications-shell .topbar { border-bottom-color: #1e2b3b; background: #0b1220; color: #e2e8f0; }
+.admin-notifications-shell .topbar h1 { color: #f1f5f9; }
+.admin-notifications-shell .topbar .sub { color: #91a5ba; }
+.admin-notifications-shell .topbar-profile-toggle { border-color: #26374a; background: #111d2d; color: #e2e8f0; }
+.admin-notifications-shell .topbar-profile-avatar { background: rgba(20,184,166,.16); color: #54ddc5; }
+.admin-notifications-shell .topbar-user-menu { border-color: #26374a; background: #111d2d; }
+.admin-notifications-shell .topbar-user-menu a,.admin-notifications-shell .topbar-user-menu button { color: #e2e8f0; }
+.admin-notifications-shell .topbar-user-menu a:hover,.admin-notifications-shell .topbar-user-menu button:hover { background: #1a2b40; }
+.admin-notifications-page .customer-notification-toolbar {
+  display: flex;
+  min-height: 68px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  padding: 13px 16px;
+  border: 1px solid #26364a;
+  border-radius: 13px;
+  background: linear-gradient(145deg,#121f30,#101a29);
+  box-shadow: 0 8px 22px rgba(0,0,0,.18);
+}
+.admin-notifications-page .notification-filters { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.admin-notifications-page .notification-filters label { color: #a9b9ca; font-size: 13px; }
+.admin-notifications-page .notification-filters select {
+  min-height: 42px;
+  min-width: 165px;
+  padding: 0 34px 0 12px;
+  border: 1px solid #2d4258;
+  border-radius: 9px;
+  background: #0b1726;
+  color: #e2e8f0;
+}
+.admin-notifications-page .notification-filters select option { background: #0b1726; color: #e2e8f0; }
+.admin-notifications-page .notification-filters select:focus { border-color: #14b8a6; outline-color: #14b8a6; }
+.admin-notifications-page #mark-all { min-height: 39px; border-color: rgba(45,212,191,.35); color: #7be3d5; }
+.admin-notifications-page #mark-all:hover:not(:disabled) { background: rgba(20,184,166,.12); }
+.admin-notifications-page #mark-all:disabled { opacity: .45; cursor: not-allowed; }
+.admin-notifications-page .customer-notification-feed { display: flex; flex: 1; flex-direction: column; gap: 13px; }
+.admin-notifications-page .customer-notification-feed-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; }
+.admin-notifications-page .customer-notification-feed-heading h2 { margin: 0 0 4px; color: #f1f5f9; font-size: 19px; }
+.admin-notifications-page .customer-notification-feed-heading p { color: #91a5bc; font-size: 12px; }
+.admin-notifications-page #notification-count { color: #91a5bc; font-size: 11px; white-space: nowrap; }
+.admin-notifications-page .customer-notification-list { display: grid; gap: 11px; }
+.admin-notifications-page .notification-card { display: grid; grid-template-columns: 46px minmax(0,1fr); align-items: start; gap: 14px; padding: 18px; border: 1px solid rgba(148,163,184,.15); border-radius: 14px; background: #111d2e; color: #e2e8f0; box-shadow: 0 8px 20px rgba(0,0,0,.12); }
+.admin-notifications-page .notification-card.notification-unread { border-color: rgba(20,184,166,.32); background: linear-gradient(115deg,rgba(20,184,166,.08),transparent 55%),#111d2e; }
+.admin-notifications-page .customer-notification-icon { display: grid; width: 42px; height: 42px; place-items: center; border-radius: 12px; background: rgba(20,184,166,.14); }
+.admin-notifications-page .customer-notification-icon img { width: 34px; height: 34px; object-fit: contain; }
+.admin-notifications-page .notification-card-heading { display: flex; align-items: center; justify-content: space-between; gap: 15px; }
+.admin-notifications-page .notification-title { color: #f1f5f9; font-size: 15px; font-weight: 700; }
+.admin-notifications-page .notification-date { color: #8297ad; font-size: 11px; white-space: nowrap; }
+.admin-notifications-page .notification-message { margin-top: 7px; color: #b4c3d2; font-size: 13px; line-height: 1.55; }
+.admin-notifications-page .notification-card .read-btn { min-height: 34px; margin-top: 12px; border-color: rgba(45,212,191,.3); color: #7be3d5; }
+.admin-notifications-page .notification-card .read-btn:hover { background: rgba(20,184,166,.12); }
+.admin-notifications-page .customer-notification-empty {
+  display: flex;
+  min-height: 300px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 1px dashed rgba(45,212,191,.22);
+  border-radius: 14px;
+  background: linear-gradient(145deg,#121f30,#101a29);
+  color: #9aafc3;
+}
+.admin-notifications-page .customer-notification-empty img { width: 58px; height: 58px; object-fit: contain; }
+.admin-notifications-page .customer-notification-empty h3 { margin: 0; color: #f1f5f9; }
+.admin-notifications-page .customer-notification-empty p { color: #9aafc3; font-size: 13px; }
+.admin-notifications-page .alert-error { background: rgba(127,29,29,.24); color: #fecaca; border-color: rgba(248,113,113,.3); }
+@media(max-width:700px) {
+  .admin-notifications-page .content { padding: 18px 14px 28px; }
+  .admin-notifications-page .customer-notification-toolbar { align-items: stretch; flex-direction: column; }
+  .admin-notifications-page .notification-filters { flex-wrap: wrap; }
+  .admin-notifications-page .notification-filters select { min-width: 0; flex: 1; }
+  .admin-notifications-page #mark-all { align-self: flex-end; }
+}
+@media(max-width:480px) {
+  .admin-notifications-page .topbar h1 { font-size: 21px; }
+  .admin-notifications-page .customer-notification-feed-heading { align-items: flex-start; flex-direction: column; gap: 5px; }
+  .admin-notifications-page .notification-card { grid-template-columns: 38px minmax(0,1fr); gap: 10px; padding: 13px; }
+  .admin-notifications-page .customer-notification-icon { width: 36px; height: 36px; }
+  .admin-notifications-page .customer-notification-icon img { width: 30px; height: 30px; }
+  .admin-notifications-page .notification-card-heading { align-items: flex-start; flex-direction: column; gap: 4px; }
+  .admin-notifications-page .notification-title { font-size: 14px; }
+}

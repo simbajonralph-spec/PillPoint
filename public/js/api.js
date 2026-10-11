@@ -1,26 +1,51 @@
 // api.js — thin fetch wrapper for the PillPoint REST API
 const Api = {
-  async request(method, url, body) {
-    const res = await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'same-origin',
-      cache: 'no-store',
-      body: body ? JSON.stringify(body) : undefined,
-    });
+  async request(method, url, body, opts = {}) {
+    const timeoutMs = Number(opts.timeoutMs) || 0;
+    const controller = timeoutMs > 0 && typeof AbortController !== 'undefined' ? new AbortController() : null;
+    let timer = null;
+    if (controller) timer = setTimeout(() => controller.abort(), timeoutMs);
+    let res;
+    try {
+      res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        cache: 'no-store',
+        body: body ? JSON.stringify(body) : undefined,
+        signal: controller ? controller.signal : undefined,
+      });
+    } catch (networkError) {
+      if (networkError && networkError.name === 'AbortError') {
+        const err = new Error('The request took too long to complete. Please try again.');
+        err.status = 0;
+        err.timeout = true;
+        throw err;
+      }
+      const err = new Error('Could not reach PillPoint. Check your internet connection and try again.');
+      err.status = 0;
+      err.network = true;
+      throw err;
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
     let data = {};
-    try { data = await res.json(); } catch (e) { /* empty body */ }
+    try { data = await res.json(); } catch (e) { /* empty or non-JSON body */ }
     if (!res.ok) {
-      const err = new Error(data.error || 'Request failed');
+      const fallback = res.status >= 500
+        ? 'Something went wrong on the server. Please try again.'
+        : `Request failed (error ${res.status}).`;
+      const err = new Error((data && data.error) || fallback);
       err.status = res.status;
+      err.payload = data;
       throw err;
     }
     return data;
   },
-  get(url) { return this.request('GET', url); },
-  post(url, body) { return this.request('POST', url, body); },
-  put(url, body) { return this.request('PUT', url, body); },
-  del(url) { return this.request('DELETE', url); },
+  get(url, opts) { return this.request('GET', url, undefined, opts); },
+  post(url, body, opts) { return this.request('POST', url, body, opts); },
+  put(url, body, opts) { return this.request('PUT', url, body, opts); },
+  del(url, opts) { return this.request('DELETE', url, undefined, opts); },
 };
 
 function toast(message, type = 'ok') {

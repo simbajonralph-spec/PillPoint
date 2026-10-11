@@ -1,5 +1,7 @@
 (function () {
   const ICON_URL = '/img/pai-icon.jpg';
+  const CHAT_TIMEOUT_MS = 90000;
+  const FALLBACK_CHAT_ERROR = 'P.A.I. is temporarily unavailable. You can continue using PillPoint standard search.';
   const ROLE_LABELS = {
     customer: 'Customer assistant',
     pharmacy_staff: 'Pharmacy assistant',
@@ -46,6 +48,17 @@
     appendResponseNotice(log, notice);
   }
 
+  function describeChatError(error, fallback = FALLBACK_CHAT_ERROR) {
+    if (!error) return fallback;
+    if (error.timeout) return 'P.A.I. took too long to respond. Please try again in a moment.';
+    if (error.network || error.status === 0) return 'You appear to be offline. Check your internet connection and try again.';
+    if (error.status === 401) return 'Your session has expired. Sign in again to keep using P.A.I.';
+    if (error.status === 403) return 'You do not have access to this P.A.I. assistant.';
+    if (error.status === 429) return 'Too many requests right now. Please wait a moment and try again.';
+    if (typeof error.status === 'number' && error.status < 500 && error.message) return error.message;
+    return fallback;
+  }
+
   async function reviewReservation(log, item, quantity, trigger) {
     if (trigger?.disabled) return;
     if (trigger) trigger.disabled = true;
@@ -81,7 +94,7 @@
       }
       appendTextMessage(log, 'assistant', 'Reservation placed. Check My Reservations for its status.');
     } catch (error) {
-      appendTextMessage(log, 'assistant', error.message || 'The reservation could not be placed. Refresh the listing and try again.');
+      appendTextMessage(log, 'assistant', describeChatError(error, 'The reservation could not be placed. Refresh the listing and try again.'));
     } finally {
       if (trigger && !placed) trigger.disabled = false;
     }
@@ -143,10 +156,10 @@
           const response = await Api.post('/api/pai/availability-watch', {
             medicine_id: result.medicine_id,
             pharmacy_id: result.pharmacy_id,
-          });
+          }, { timeoutMs: CHAT_TIMEOUT_MS });
           appendTextMessage(log, 'assistant', response.message || 'Availability alert set.');
         } catch (error) {
-          appendTextMessage(log, 'assistant', error.message || 'Could not set that availability alert.');
+          appendTextMessage(log, 'assistant', describeChatError(error, 'Could not set that availability alert. Please try again.'));
           actionButton.disabled = false;
         }
       });
@@ -245,10 +258,10 @@
         sendButton.disabled = true;
         input.disabled = true;
         try {
-          const response = await Api.post('/api/pai/assistant', { message: text });
+          const response = await Api.post('/api/pai/assistant', { message: text }, { timeoutMs: CHAT_TIMEOUT_MS });
           renderCustomerResult(log, response.result);
         } catch (error) {
-          appendTextMessage(log, 'assistant', error.message || 'P.A.I. is temporarily unavailable. You can continue using PillPoint standard search.');
+          appendTextMessage(log, 'assistant', describeChatError(error));
         } finally {
           sendButton.disabled = false;
           input.disabled = false;
@@ -276,12 +289,12 @@
       input.value = '';
       sendButton.disabled = true;
       input.disabled = true;
-      Api.post(roleEndpoint, { message: text })
+      Api.post(roleEndpoint, { message: text }, { timeoutMs: CHAT_TIMEOUT_MS })
         .then(response => {
           appendTextMessage(log, 'assistant', response.result?.message || 'P.A.I. did not return a response.');
           appendResponseProvenance(log, response.result);
         })
-        .catch(error => appendTextMessage(log, 'assistant', error.message || 'P.A.I. is temporarily unavailable.'))
+        .catch(error => appendTextMessage(log, 'assistant', describeChatError(error, 'P.A.I. could not explain the current PillPoint analytics. Please try again.')))
         .finally(() => {
           sendButton.disabled = false;
           input.disabled = false;

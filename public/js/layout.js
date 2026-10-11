@@ -195,6 +195,10 @@ function mountPaiAssistant(user, path) {
   script.id = 'pai-assistant-script';
   script.src = '/js/pai-assistant.js';
   script.onload = () => window.PaiAssistant?.init({ role: user.role });
+  script.onerror = () => {
+    script.remove();
+    toast('The P.A.I. assistant could not be loaded. Standard search and the rest of PillPoint still work.', 'error');
+  };
   document.body.appendChild(script);
 }
 

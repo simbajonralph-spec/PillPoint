@@ -1,0 +1,13 @@
+/* Complete the navy and teal account theme for administrator profiles. */
+.admin-profile-page .main { background: #0b1220; }
+.admin-profile-page .topbar { border-bottom: 1px solid rgba(148,163,184,.15); background: #0b1220; }
+.admin-profile-page .topbar h1 { color: #f1f5f9; font-size: 25px; font-weight: 800; letter-spacing: -.4px; }
+.admin-profile-page .topbar .sub { margin-top: 5px; color: #91a5bc; font-size: 14px; }
+.admin-profile-page .topbar-profile-toggle { border-color: rgba(148,163,184,.2); background: #111d2e; color: #e2e8f0; }
+.admin-profile-page .topbar-profile-avatar { background: rgba(20,184,166,.15); color: #5eead4; }
+.admin-profile-page .content { min-height: calc(100vh - 75px); padding: 24px 28px 36px; background: radial-gradient(ellipse at 100% 0,rgba(20,184,166,.08),transparent 32%),#0b1220; }
+.admin-profile-shell .topbar-user-menu { border-color: #26374a; background: #111d2d; }
+.admin-profile-shell .topbar-user-menu a,.admin-profile-shell .topbar-user-menu button { color: #e2e8f0; }
+.admin-profile-shell .topbar-user-menu a:hover,.admin-profile-shell .topbar-user-menu button:hover { background: #1a2b40; }
+@media(max-width:700px) { .admin-profile-page .content { padding: 16px 13px 26px; } }
+@media(max-width:480px) { .admin-profile-page .topbar h1 { font-size: 21px; } }

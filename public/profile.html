@@ -6,6 +6,7 @@
 <title>Profile — PillPoint</title>
 <link rel="icon" type="image/svg+xml" href="/img/logo-mark.svg" />
 <link rel="stylesheet" href="/css/style.css?v=20261011-customer-profile-theme" />
+<link rel="stylesheet" href="/css/admin-profile-theme.css" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 </head>
 <body>
@@ -25,23 +26,28 @@
     await renderPharmacyProfile();
   } else {
     if (user.role === 'customer') document.body.classList.add('customer-profile-page');
+    else if (user.role === 'admin') {
+      document.body.classList.add('admin-profile-page');
+      document.getElementById('app-shell')?.classList.add('admin-profile-shell');
+    }
     renderBasicProfile(user);
   }
 
   function renderBasicProfile(u) {
     let profileImageData = u.profile_image || null;
+    const roleLabel = u.role === 'admin' ? 'Administrator' : 'Customer';
     content.innerHTML = `
       <div class="customer-profile-layout">
         <section class="customer-profile-summary">
           <div class="customer-profile-avatar-wrap"><div class="customer-profile-avatar" id="profile-summary-avatar">${profileImageData ? `<img src="${escapeHtml(profileImageData)}" alt="Profile photo" />` : iconSvg('user', 68)}</div><label class="customer-profile-camera" for="profile-image-input" aria-label="Upload profile photo">${iconSvg('camera', 17)}</label></div>
-          <h2 id="profile-summary-name">${escapeHtml(u.username || u.name)}</h2><span class="customer-profile-role">Customer</span><span class="customer-profile-verified">${iconSvg('user', 14)} Customer account</span>
+          <h2 id="profile-summary-name">${escapeHtml(u.username || u.name)}</h2><span class="customer-profile-role">${roleLabel}</span><span class="customer-profile-verified">${iconSvg('user', 14)} ${roleLabel} account</span>
           <div class="customer-profile-health"><span class="customer-profile-health-icon">✚</span><div><strong>Your health and safety matter.</strong><p>Keep your profile updated so we can provide you with the best service.</p></div></div>
         </section>
         <div class="customer-profile-main">
           <section class="customer-profile-information">
             <div class="customer-profile-section-heading"><div><h2>Personal information</h2><p>Update your details below.</p></div><div class="customer-profile-photo"><div class="customer-profile-photo-avatar" id="profile-photo-avatar">${profileImageData ? `<img src="${escapeHtml(profileImageData)}" alt="Profile photo" />` : iconSvg('user', 42)}</div><div class="customer-profile-photo-copy"><strong>Profile photo</strong><span>Add a clear photo of yourself for a better experience.</span><div class="customer-profile-photo-actions"><label class="btn btn-primary btn-sm" for="profile-image-input">Upload photo</label><button type="button" class="btn btn-outline btn-sm" id="remove-profile-photo">Remove</button></div></div></div></div>
             <input class="customer-profile-file" id="profile-image-input" type="file" accept="image/png,image/jpeg,image/webp" />
-            <div class="customer-profile-fields"><div class="field"><label for="username-input">Full name</label><input id="username-input" value="${escapeHtml(u.username || u.name)}" autocomplete="name" /></div><div class="field"><label for="user-phone-input">Mobile number</label><input id="user-phone-input" type="tel" value="${escapeHtml(u.phone || '')}" placeholder="+639XXXXXXXXX" pattern="\+639[0-9]{9}" autocomplete="tel" /></div><div class="field"><label>Email</label><input value="${escapeHtml(u.email)}" disabled></div><div class="field"><label>Account role</label><input value="Customer" disabled></div></div>
+            <div class="customer-profile-fields"><div class="field"><label for="username-input">Full name</label><input id="username-input" value="${escapeHtml(u.username || u.name)}" autocomplete="name" /></div><div class="field"><label for="user-phone-input">Mobile number</label><input id="user-phone-input" type="tel" value="${escapeHtml(u.phone || '')}" placeholder="+639XXXXXXXXX" pattern="\+639[0-9]{9}" autocomplete="tel" /></div><div class="field"><label>Email</label><input value="${escapeHtml(u.email)}" disabled></div><div class="field"><label>Account role</label><input value="${roleLabel}" disabled></div></div>
             <p class="customer-profile-admin-note">${iconSvg('activity', 16)} Email and role are managed by the administrator and cannot be changed here.</p><div class="customer-profile-actions"><button class="btn btn-primary" id="save-btn">${iconSvg('check', 16)} Save changes</button><button class="btn btn-outline" id="cancel-btn" type="button">Cancel</button></div>
           </section>
           <section class="customer-profile-security"><div class="customer-profile-security-icon">${iconSvg('shield', 21)}</div><div><h3>Account security</h3><p>Keep your account safe and secure.</p></div></section>

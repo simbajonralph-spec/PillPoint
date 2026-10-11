@@ -134,6 +134,7 @@ router.get('/dashboard', (req, res) => {
     suspendedPharmacies: db.prepare("SELECT COUNT(*) AS c FROM pharmacies WHERE COALESCE(verification_status, CASE WHEN verified = 1 THEN 'VERIFIED' ELSE 'PENDING' END) = 'SUSPENDED'").get().c,
     customers: db.prepare("SELECT COUNT(*) AS c FROM users WHERE role = 'customer'").get().c,
     reservations: db.prepare('SELECT COUNT(*) AS c FROM reservations').get().c,
+    medicines: db.prepare('SELECT COUNT(*) AS c FROM medicines').get().c,
   };
   const shortageCount = db.prepare(`
     SELECT COUNT(*) AS c FROM (
@@ -273,6 +274,26 @@ router.get('/dashboard', (req, res) => {
     LIMIT 10
   `).all();
 
+  const recentReservations = db.prepare(`
+    SELECT r.id, r.reserved_at, r.status, r.quantity,
+      m.name AS medicine_name, m.category,
+      p.name AS pharmacy_name, p.address AS pharmacy_address
+    FROM reservations r
+    JOIN inventory i ON i.id = r.inventory_id
+    JOIN medicines m ON m.id = i.medicine_id
+    JOIN pharmacies p ON p.id = i.pharmacy_id
+    ORDER BY r.reserved_at DESC, r.id DESC
+    LIMIT 6
+  `).all();
+  const pharmacyLocations = db.prepare(`
+    SELECT id, name, address, latitude, longitude
+    FROM pharmacies
+    WHERE COALESCE(verification_status, CASE WHEN verified = 1 THEN 'VERIFIED' ELSE 'PENDING' END) = 'VERIFIED'
+      AND latitude IS NOT NULL AND longitude IS NOT NULL
+    ORDER BY name ASC
+    LIMIT 100
+  `).all();
+
   res.json({
     totals,
     shortageCount,
@@ -289,6 +310,8 @@ router.get('/dashboard', (req, res) => {
       newCustomersThisWeek,
     },
     recentActivity,
+    recentReservations,
+    pharmacyLocations,
     topPharmacies,
     reservationsByStatus,
   });
