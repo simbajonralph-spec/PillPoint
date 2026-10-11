@@ -106,11 +106,26 @@ test('pharmacy insights use scoped inventory, reservations, batches, peer prices
     assert.ok(result.data_quality.issues.some(issue => issue.batch_id
       && issue.issue === 'Active batch has no expiration date'));
 
-    assert.equal(result.performance_summary.reservation_count, 2);
-    assert.equal(result.performance_summary.reservation_units, 10);
+    // The 10-day-old reservation is inside month-to-date when the test runs
+    // later than day 10 of a month, and outside it earlier in the month.
+    const thirdReservationIsInCurrentMonth = Number(db.prepare(`
+      SELECT CASE
+        WHEN datetime('now', '-10 days') >= datetime('now', 'start of month') THEN 1
+        ELSE 0
+      END AS included
+    `).get().included);
+    assert.equal(result.performance_summary.reservation_count, 2 + thirdReservationIsInCurrentMonth);
+    assert.equal(result.performance_summary.reservation_units, 10 + (4 * thirdReservationIsInCurrentMonth));
     assert.equal(result.performance_summary.pharmacy_matched_searches, 1);
     assert.equal(result.performance_summary.stock_movements_30_days, 2);
     assert.equal(result.performance_summary.top_reserved_medicines[0].medicine_name, 'P.A.I. Pharmacy Insight Test Medicine');
+    const quantities = result.inventory_quantities.items.find(item => item.inventory_id === inventoryId);
+    assert.deepEqual({
+      physical: quantities.physical_stock,
+      reserved: quantities.reserved_quantity,
+      available: quantities.available_quantity,
+    }, { physical: 4, reserved: 4, available: 0 });
+    assert.deepEqual(result.stock_movements.items.map(item => item.transaction_type).sort(), ['stock_in', 'stock_out']);
 
     throw rollback;
   });
@@ -131,4 +146,25 @@ test('pharmacy insights are scoped to the requested pharmacy', () => {
   assert.ok(result.price_analysis);
   assert.ok(result.data_quality);
   assert.ok(result.performance_summary);
+});
+
+test('pharmacy insights return stable empty-data statistics for a pharmacy with no inventory', () => {
+  const result = getInventoryInsights(Number.MAX_SAFE_INTEGER);
+  assert.deepEqual(result.stock_risk, {
+    items: [],
+    summary: { critical: 0, high: 0, moderate: 0 },
+  });
+  assert.deepEqual(result.demand_analysis.items, []);
+  assert.deepEqual(result.demand_analysis.summary, {
+    increasing: 0, decreasing: 0, unusually_high: 0, stable: 0,
+  });
+  assert.deepEqual(result.top_searched, []);
+  assert.deepEqual(result.expiry_risk.items, []);
+  assert.deepEqual(result.price_analysis.items, []);
+  assert.deepEqual(result.inventory_quantities.items, []);
+  assert.deepEqual(result.inventory_quantities.totals, {
+    physical_stock: 0, eligible_batch_stock: 0, reserved_quantity: 0, available_quantity: 0,
+  });
+  assert.deepEqual(result.stock_movements.items, []);
+  assert.deepEqual(result.data_quality.issues, []);
 });
