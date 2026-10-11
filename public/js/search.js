@@ -4,62 +4,37 @@
 
   const content = document.getElementById('page-content');
   content.innerHTML = `
-    <div class="card fade-in-up" id="search-panel">
-      <div class="filters-row">
-        <div class="field grow">
-          <label>Medicine name</label>
-          <input type="text" id="q" placeholder="e.g. Paracetamol" />
-        </div>
-        <div class="field">
-          <label>Category</label>
-          <select id="category"><option value="">All categories</option></select>
-        </div>
-        <div class="field" style="align-self:flex-end;">
-          <button class="btn btn-primary" id="search-btn">Search</button>
-        </div>
-      </div>
-    </div>
-    <div class="card mt-16" id="ai-search-panel">
-      <div class="card-title">P.A.I. Smart Search</div>
-      <div class="filters-row">
-        <div class="field grow">
-          <label>Ask PillPoint</label>
-          <input type="text" id="pai-q" placeholder="Try: paracetamol or under 50" />
-        </div>
-        <div class="field" style="align-self:flex-end;">
-          <button class="btn btn-secondary" id="pai-search-btn" type="button">AI Find</button>
-        </div>
-      </div>
+    <section class="search-toolbar" id="search-panel">
+      <span class="search-toolbar-mark" aria-hidden="true">Rx</span>
+      <div class="field grow"><label for="q">Medicine</label><input type="text" id="q" placeholder="Search medicine name" /></div>
+      <button class="btn btn-primary" id="search-btn" type="button"><span aria-hidden="true">⌕</span> Search</button>
+      <div class="field search-category"><label for="category">Category</label><select id="category"><option value="">All categories</option></select></div>
+    </section>
+    <details class="card search-ai" id="ai-search-panel">
+      <summary>Use Smart Search</summary>
+      <div class="search-ai-form"><div class="field grow"><label for="pai-q">Describe what you need</label><input type="text" id="pai-q" placeholder="Try: paracetamol or under 50" /></div><button class="btn btn-secondary" id="pai-search-btn" type="button">Ask PillPoint</button></div>
       <div id="pai-results" class="mt-16"></div>
+    </details>
+    <div id="shortage-notice"></div>
+    <div class="sr-only" id="pharmacy-recommendations" aria-live="polite"></div>
+    <div class="search-main-grid" id="map-region">
+      <section class="card search-offers-panel" id="results-panel">
+        <header class="search-panel-heading"><span class="search-panel-icon" aria-hidden="true">⌖</span><div><h2>Nearby Pharmacies</h2><p>Pharmacies near you with this medicine</p></div><span class="search-result-count" id="search-result-count">Searching</span></header>
+        <div id="results" class="search-offer-list"></div>
+      </section>
+      <aside class="search-map-column">
+        <section class="card search-map-card">
+          <div class="search-map-top"><div id="location-status" class="text-sm muted" role="status" aria-live="polite">Checking current location...</div><button class="btn btn-outline btn-sm" id="locate-btn" type="button">Locate me</button></div>
+          <div class="map-placeholder search-map-frame"><div id="leaflet-map"></div></div>
+          <div class="search-medicine-summary" id="search-medicine-summary"><span class="search-medicine-icon" aria-hidden="true">Rx</span><div><strong id="summary-medicine-name">Search a medicine</strong><small id="summary-medicine-category">Nearby availability appears here</small></div></div>
+          <div class="search-trust-points"><span><b aria-hidden="true">✓</b> Verified Pharmacies</span><span><b aria-hidden="true">◷</b> Real-time Availability</span><span><b aria-hidden="true">⌖</b> Nearby Locations</span></div>
+          <div id="directions-status" class="search-directions-status" role="status" aria-live="polite">Choose Directions on a pharmacy result to plan your route.</div>
+        </section>
+        <section class="search-more-card"><span class="search-more-pin" aria-hidden="true">⌖</span><div><strong>Need something else?</strong><small>Search another medicine or explore more categories.</small></div><span aria-hidden="true">›</span></section>
+      </aside>
     </div>
-    <div class="card mt-16" id="results-panel">
-      <div class="card-title">Available Medicines</div>
-      <div id="shortage-notice"></div>
-      <div id="results" class="table-wrap"></div>
-    </div>
-
-    <div class="map-slide-region" id="map-region">
-      <div class="flex gap-12" style="align-items:center;justify-content:space-between;flex-wrap:wrap;">
-        <div class="section-title" style="margin:0;">Nearby Pharmacies With This Medicine</div>
-        <div class="flex gap-12" style="align-items:center;">
-          <span id="location-status" class="text-sm muted" role="status" aria-live="polite">Checking current location...</span>
-          <button class="btn btn-outline btn-sm" id="locate-btn" type="button">Use current location</button>
-        </div>
-      </div>
-      <div id="pharmacy-recommendations" class="pharmacy-recommendations"></div>
-      <div class="grid search-results-grid" style="gap:20px;">
-        <div class="card">
-          <div class="map-placeholder"><div id="leaflet-map"></div></div>
-          <p class="text-sm muted mt-8">Map data &copy; OpenStreetMap contributors, rendered via Leaflet.js. Tap a pin for details.</p>
-          <div id="directions-status" class="text-sm muted mt-8" role="status" aria-live="polite">Select a pharmacy and choose Directions to see a road route.</div>
-        </div>
-        <div class="card">
-          <div id="pharmacy-list"></div>
-        </div>
-      </div>
-    </div>
+    <div class="sr-only" id="pharmacy-list" aria-live="polite"></div>
   `;
-
   // ---------- Medicine search ----------
   const qInput = document.getElementById('q');
   const categorySelect = document.getElementById('category');
@@ -69,7 +44,8 @@
   let lastResults = [];
 
   async function runSearch(verifiedSearchData = null) {
-    results.innerHTML = skeletonLoader('table', 3);
+    document.getElementById('search-result-count').textContent = 'Searching';
+    results.innerHTML = skeletonLoader('cards', 4);
     try {
       let data = verifiedSearchData && Array.isArray(verifiedSearchData.results) ? verifiedSearchData : null;
       if (!data) {
@@ -77,6 +53,9 @@
         data = await Api.get('/api/customer/medicines/search?' + params.toString());
       }
       lastResults = data.results;
+      document.getElementById('search-result-count').textContent = `${data.results.length} found`;
+      document.getElementById('summary-medicine-name').textContent = data.results[0]?.medicine_name || qInput.value.trim() || 'Search a medicine';
+      document.getElementById('summary-medicine-category').textContent = data.results[0]?.category || 'Nearby availability appears here';
 
       if (categorySelect.children.length === 1) {
         data.categories.forEach(c => {
@@ -94,52 +73,32 @@
       }
 
       if (!data.results.length) {
-        results.innerHTML = `<div class="empty-state"><div class="icon">&#128269;</div><h3>No results</h3><p>Try a different medicine name or category.</p></div>`;
+        results.innerHTML = `<div class="search-empty-state"><span aria-hidden="true">Rx</span><h3>No pharmacies found</h3><p>Try another medicine or category.</p></div>`;
         mapRegion.classList.remove('open');
+        showResultsOnMap([]);
         return;
       }
 
-      results.innerHTML = `
-        <table>
-          <thead><tr><th>Medicine</th><th>Pharmacy</th><th>Brand</th><th>Price</th><th>Stock</th><th>Status</th><th></th></tr></thead>
-          <tbody>
-            ${data.results.map(r => {
-              const available = Number(r.available_quantity ?? r.available_stock ?? r.stock_quantity);
-              return `
-              <tr>
-                <td>
-                  <div style="font-weight:600">${escapeHtml(r.medicine_name)}</div>
-                  <div class="text-sm muted">${escapeHtml(r.category || '')}</div>
-                </td>
-                <td>
-                  <a href="/pharmacy-profile.html?id=${r.pharmacy_id}" style="color:inherit;text-decoration:none;">
-                    <span style="font-weight:600;">${escapeHtml(r.pharmacy_name)}</span>
-                  </a>
-                  ${(r.verification_status || (r.verified ? 'VERIFIED' : 'PENDING')) === 'VERIFIED' ? '<span class="badge badge-verified" style="margin-left:6px;">Verified</span>' : ''}
-                  <div class="text-sm muted">${r.average_rating ? `★ ${r.average_rating} · ${r.rating_count} rating${r.rating_count === 1 ? '' : 's'}` : 'Not yet rated'}</div>
-                  <div class="text-sm muted">${escapeHtml(r.address)}</div>
-                </td>
-                <td class="text-sm muted">${escapeHtml(r.brand || '—')}</td>
-                <td>${money(r.price)}</td>
-                <td>
-                  <div>${available} available</div>
-                  <div class="text-sm muted">${Number(r.stock_quantity)} physical · ${Number(r.reserved_quantity)} reserved</div>
-                </td>
-                <td>${stockBadge(available, r.low_stock_threshold)}</td>
-                <td>
-                  <button class="btn btn-primary btn-sm reserve-btn"
-                    data-max="${available}" data-id="${r.inventory_id}" data-debug-inventory="${r.inventory_id}"
-                    data-name="${escapeHtml(r.medicine_name)}"
-                    data-pharmacy="${escapeHtml(r.pharmacy_name)}" data-price="${r.price}"
-                    ${available <= 0 ? 'disabled' : ''}>
-                    Reserve
-                  </button>
-                </td>
-              </tr>`;
-            }).join('')}
-          </tbody>
-        </table>
-      `;
+      results.innerHTML = data.results.map((r, index) => {
+        const available = Number(r.available_quantity ?? r.available_stock ?? r.stock_quantity);
+        const distance = distanceFromCustomer(r);
+        const image = r.profile_image || r.store_image;
+        return `
+          <article class="search-offer-card">
+            <span class="search-offer-avatar">${image ? `<img src="${escapeHtml(image)}" alt="" />` : '<b aria-hidden="true">+</b>'}</span>
+            <div class="search-offer-details">
+              <a class="search-pharmacy-name" href="/pharmacy-profile.html?id=${r.pharmacy_id}">${escapeHtml(r.pharmacy_name)}</a>
+              <span class="search-offer-medicine">${escapeHtml(r.medicine_name)}${r.brand ? ` · ${escapeHtml(r.brand)}` : ''}</span>
+              <span class="search-offer-address">${escapeHtml(r.address)}</span><span class="search-offer-distance">${distance === null ? 'Distance unavailable' : `${distance.toFixed(1)} km away`}</span>
+            </div>
+            <div class="search-offer-stock">${stockBadge(available, r.low_stock_threshold)}<small>${available} available</small></div>
+            <div class="search-offer-price"><strong>${money(r.price)}</strong><small>per unit</small></div>
+            <div class="search-offer-actions">
+              <button class="btn btn-primary btn-sm reserve-btn" data-max="${available}" data-id="${r.inventory_id}" data-debug-inventory="${r.inventory_id}" data-name="${escapeHtml(r.medicine_name)}" data-pharmacy="${escapeHtml(r.pharmacy_name)}" data-price="${r.price}" ${available <= 0 ? 'disabled' : ''}>Reserve</button>
+              <button class="btn btn-outline btn-sm offer-directions" type="button" data-index="${index}">Directions</button>
+            </div>
+          </article>`;
+      }).join('');
 
       document.querySelectorAll('.reserve-btn').forEach(btn => btn.addEventListener('click', async () => {
         const price = Number(btn.dataset.price);
@@ -157,7 +116,10 @@
           runSearch();
         } catch (err) { toast(err.message, 'error'); }
       }));
-
+      document.querySelectorAll('.offer-directions').forEach(button => button.addEventListener('click', () => {
+        const pharmacy = lastResults[Number(button.dataset.index)];
+        if (pharmacy) showDirections(pharmacy);
+      }));
       // Slide the map up, focused on pharmacies that actually carry this medicine.
       mapRegion.classList.add('open');
       setTimeout(() => { showResultsOnMap(data.results); if (map) map.invalidateSize(); }, 60);

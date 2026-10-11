@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Profile — PillPoint</title>
 <link rel="icon" type="image/svg+xml" href="/img/logo-mark.svg" />
-<link rel="stylesheet" href="/css/style.css?v=20261011-profile-type-size" />
+<link rel="stylesheet" href="/css/style.css?v=20261011-customer-profile-theme" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 </head>
 <body>
@@ -24,44 +24,43 @@
     document.querySelector('.topbar-heading .sub').textContent = 'Manage your pharmacy identity and business details';
     await renderPharmacyProfile();
   } else {
+    if (user.role === 'customer') document.body.classList.add('customer-profile-page');
     renderBasicProfile(user);
   }
 
   function renderBasicProfile(u) {
     let profileImageData = u.profile_image || null;
     content.innerHTML = `
-      <div class="profile-wrap">
-        <div class="card card-elevated">
-          <div class="field">
-            <label>Profile Picture</label>
-            <input id="profile-image-input" type="file" accept="image/png,image/jpeg,image/webp" />
-            <img id="profile-image-preview" src="${profileImageData || ''}" alt="Profile preview" style="display:${profileImageData ? 'block' : 'none'};width:88px;height:88px;object-fit:cover;border-radius:50%;margin-top:10px;" />
-          </div>
-          <div class="field">
-            <label>Username</label>
-            <input id="username-input" value="${escapeHtml(u.username || u.name)}" />
-          </div>
-          <div class="field">
-            <label>Mobile Number</label>
-            <input id="user-phone-input" type="tel" value="${escapeHtml(u.phone || '')}" placeholder="+639XXXXXXXXX" pattern="\+639[0-9]{9}" />
-          </div>
-          <div class="field"><label>Email</label><input value="${escapeHtml(u.email)}" disabled></div>
-          <div class="field"><label>Role</label><input value="${escapeHtml(u.role.replace('_',' '))}" disabled></div>
-          <button class="btn btn-primary" id="save-btn">Save Changes</button>
-          <p class="text-sm muted mt-16">Email and role can't be changed here — contact your admin if those need to change.</p>
+      <div class="customer-profile-layout">
+        <section class="customer-profile-summary">
+          <div class="customer-profile-avatar-wrap"><div class="customer-profile-avatar" id="profile-summary-avatar">${profileImageData ? `<img src="${escapeHtml(profileImageData)}" alt="Profile photo" />` : iconSvg('user', 68)}</div><label class="customer-profile-camera" for="profile-image-input" aria-label="Upload profile photo">${iconSvg('camera', 17)}</label></div>
+          <h2 id="profile-summary-name">${escapeHtml(u.username || u.name)}</h2><span class="customer-profile-role">Customer</span><span class="customer-profile-verified">${iconSvg('user', 14)} Customer account</span>
+          <div class="customer-profile-health"><span class="customer-profile-health-icon">✚</span><div><strong>Your health and safety matter.</strong><p>Keep your profile updated so we can provide you with the best service.</p></div></div>
+        </section>
+        <div class="customer-profile-main">
+          <section class="customer-profile-information">
+            <div class="customer-profile-section-heading"><div><h2>Personal information</h2><p>Update your details below.</p></div><div class="customer-profile-photo"><div class="customer-profile-photo-avatar" id="profile-photo-avatar">${profileImageData ? `<img src="${escapeHtml(profileImageData)}" alt="Profile photo" />` : iconSvg('user', 42)}</div><div class="customer-profile-photo-copy"><strong>Profile photo</strong><span>Add a clear photo of yourself for a better experience.</span><div class="customer-profile-photo-actions"><label class="btn btn-primary btn-sm" for="profile-image-input">Upload photo</label><button type="button" class="btn btn-outline btn-sm" id="remove-profile-photo">Remove</button></div></div></div></div>
+            <input class="customer-profile-file" id="profile-image-input" type="file" accept="image/png,image/jpeg,image/webp" />
+            <div class="customer-profile-fields"><div class="field"><label for="username-input">Full name</label><input id="username-input" value="${escapeHtml(u.username || u.name)}" autocomplete="name" /></div><div class="field"><label for="user-phone-input">Mobile number</label><input id="user-phone-input" type="tel" value="${escapeHtml(u.phone || '')}" placeholder="+639XXXXXXXXX" pattern="\+639[0-9]{9}" autocomplete="tel" /></div><div class="field"><label>Email</label><input value="${escapeHtml(u.email)}" disabled></div><div class="field"><label>Account role</label><input value="Customer" disabled></div></div>
+            <p class="customer-profile-admin-note">${iconSvg('activity', 16)} Email and role are managed by the administrator and cannot be changed here.</p><div class="customer-profile-actions"><button class="btn btn-primary" id="save-btn">${iconSvg('check', 16)} Save changes</button><button class="btn btn-outline" id="cancel-btn" type="button">Cancel</button></div>
+          </section>
+          <section class="customer-profile-security"><div class="customer-profile-security-icon">${iconSvg('shield', 21)}</div><div><h3>Account security</h3><p>Keep your account safe and secure.</p></div></section>
         </div>
       </div>
     `;
+    const originalProfile = { username: u.username || u.name || '', phone: u.phone || '', image: profileImageData };
+    const updatePhoto = image => {
+      document.getElementById('profile-summary-avatar').innerHTML = image ? `<img src="${escapeHtml(image)}" alt="Profile photo" />` : iconSvg('user', 68);
+      document.getElementById('profile-photo-avatar').innerHTML = image ? `<img src="${escapeHtml(image)}" alt="Profile photo" />` : iconSvg('user', 42);
+    };
     document.getElementById('profile-image-input').addEventListener('change', () => {
       const file = document.getElementById('profile-image-input').files[0];
       if (!file) return;
-      if (file.size > 4 * 1024 * 1024) { toast('Please choose an image under 4MB.', 'error'); return; }
+      if (file.size > 4 * 1024 * 1024) { toast('Please choose an image under 4MB.', 'error'); document.getElementById('profile-image-input').value = ''; return; }
       const reader = new FileReader();
       reader.onload = () => {
         profileImageData = reader.result;
-        const preview = document.getElementById('profile-image-preview');
-        preview.src = profileImageData;
-        preview.style.display = 'block';
+        updatePhoto(profileImageData);
       };
       reader.readAsDataURL(file);
     });
@@ -73,13 +72,27 @@
           profile_image: profileImageData,
         });
         toast('Profile updated.');
+        document.getElementById('profile-summary-name').textContent = res.user.username;
         const nameEl = document.querySelector('.user-box .user-name');
         if (nameEl) nameEl.textContent = res.user.username;
-        const profileLink = document.querySelector('.topbar-profile');
-        if (profileLink && profileImageData) profileLink.innerHTML = `<img src="${escapeHtml(profileImageData)}" alt="" />`;
+        const profileLink = document.querySelector('.topbar-profile-avatar');
+        if (profileLink) profileLink.innerHTML = profileImageData ? `<img src="${escapeHtml(profileImageData)}" alt="" />` : iconSvg('user', 20);
       } catch (err) {
         toast(err.message, 'error');
       }
+    });
+    document.getElementById('remove-profile-photo').addEventListener('click', () => {
+      profileImageData = null;
+      document.getElementById('profile-image-input').value = '';
+      updatePhoto(null);
+    });
+    document.getElementById('cancel-btn').addEventListener('click', () => {
+      document.getElementById('username-input').value = originalProfile.username;
+      document.getElementById('profile-summary-name').textContent = originalProfile.username;
+      document.getElementById('user-phone-input').value = originalProfile.phone;
+      profileImageData = originalProfile.image;
+      document.getElementById('profile-image-input').value = '';
+      updatePhoto(profileImageData);
     });
   }
 

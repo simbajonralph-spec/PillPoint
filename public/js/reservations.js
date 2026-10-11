@@ -1,11 +1,12 @@
 (async function () {
   const user = await guardPage(['customer'], 'My Reservations', 'Track and manage your medicine reservations');
   if (!user) return;
+  document.body.classList.add('customer-reservations-page');
 
   const content = document.getElementById('page-content');
   content.innerHTML = `
-    <div class="card">
-      <div class="filters-row">
+    <div class="card customer-reservations-panel">
+      <div class="filters-row customer-reservations-filters">
         <div class="field">
           <label>Filter by status</label>
           <select id="status-filter">
@@ -19,7 +20,7 @@
           </select>
         </div>
       </div>
-      <div id="list" class="table-wrap"></div>
+      <div id="list" class="table-wrap customer-reservations-list"></div>
     </div>
   `;
 

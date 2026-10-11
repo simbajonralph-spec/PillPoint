@@ -80,14 +80,16 @@
   }
 
   try {
-    const [data, inventoryData, paiData] = await Promise.all([
+    const [data, inventoryData, paiData, profileData] = await Promise.all([
       Api.get('/api/pharmacy/dashboard'),
       Api.get('/api/pharmacy/inventory'),
       Api.get('/api/pai/inventory-insights').catch(error => ({
         unavailable: true,
         error: error.message || 'P.A.I. pharmacy insights are currently unavailable.',
       })),
+      Api.get('/api/pharmacy/profile').catch(() => null),
     ]);
+    data.pharmacy.cover_image = profileData?.pharmacy?.cover_image || null;
 
     const stats = data.stats;
     const paiDemand = paiData.demand_analysis?.items || [];
@@ -169,6 +171,7 @@
     content.innerHTML = `
       <!-- === HEADER === -->
       <div class="dash-header-dark">
+        ${data.pharmacy.cover_image ? `<img class="dash-header-cover-image" src="${escapeHtml(data.pharmacy.cover_image)}" alt="" aria-hidden="true" />` : ''}
         <div style="position:relative;z-index:1;">
           <div class="dash-header-eyebrow">PHARMACY CONTROL CENTER</div>
           <h2 class="dash-header-name">

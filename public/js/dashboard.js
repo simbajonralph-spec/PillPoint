@@ -1,5 +1,5 @@
 (async function () {
-  const user = await guardPage(['customer'], 'Dashboard', 'Welcome back');
+  const user = await guardPage(['customer'], 'Dashboard', 'Your PillPoint overview');
   if (!user) return;
 
   const content = document.getElementById('page-content');
@@ -9,93 +9,37 @@
     const data = await Api.get('/api/customer/dashboard');
     const counts = {};
     data.statusCounts.forEach(s => counts[s.status] = s.count);
+    const greeting = new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 18 ? 'Good afternoon' : 'Good evening';
     content.innerHTML = `
-      <div class="card mt-8 card-hero" style="background:linear-gradient(135deg,var(--navy),#142234);color:#fff;border:none;">
-        <h2 style="color:#fff;">Welcome back, ${escapeHtml(data.user.name)}</h2>
-        <p class="mt-8" style="color:#a6b2c4;">Find medicine and manage your reservations.</p>
-        <a href="/search.html" class="btn btn-primary mt-16" style="display:inline-flex;">Search Medicines</a>
+      <section class="customer-welcome"><div><span class="customer-welcome-icon"><img class="customer-dashboard-image-icon" src="/icons/good_morning.png" alt="" /></span><div><h2>${greeting}, ${escapeHtml(data.user.name)}!</h2><p>Your health is our priority. Find the right medicine, nearby and hassle-free.</p></div></div></section>
+      <section class="customer-stat-grid" aria-label="Reservation summary">
+        <div class="customer-stat-card pending"><span class="customer-stat-icon"><img class="customer-dashboard-image-icon" src="/icons/pending.png" alt="" /></span><strong>Pending</strong><b>${counts.pending || 0}</b><small>No pending reservations</small></div>
+        <div class="customer-stat-card confirmed"><span class="customer-stat-icon"><img class="customer-dashboard-image-icon" src="/icons/confirmed.png" alt="" /></span><strong>Confirmed</strong><b>${counts.confirmed || 0}</b><small>No confirmed reservations</small></div>
+        <div class="customer-stat-card completed"><span class="customer-stat-icon"><img class="customer-dashboard-image-icon" src="/icons/completed.png" alt="" /></span><strong>Completed</strong><b>${counts.completed || 0}</b><small>No completed reservations</small></div>
+        <div class="customer-stat-card notifications"><span class="customer-stat-icon"><img class="customer-dashboard-image-icon" src="/icons/unread_notifications.png" alt="" /></span><strong>Unread Notifications</strong><b>${data.unreadNotifications || 0}</b><small>${data.unreadNotifications ? `You have ${data.unreadNotifications} new notification${data.unreadNotifications === 1 ? '' : 's'}` : 'You are all caught up'}</small></div>
+      </section>
+      <div class="customer-dashboard-grid">
+        <section class="card customer-map-card">
+          <div class="customer-section-heading"><span class="customer-section-icon"><img class="customer-dashboard-image-icon" src="/icons/nearby_pharmacy.png" alt="" /></span><div><h2>Nearby Pharmacies</h2><p>Find trusted pharmacies near you and get your medicines faster.</p></div><a class="btn btn-outline" href="/search.html">View All <span class="customer-arrow" aria-hidden="true"></span></a></div>
+          <div class="customer-map-frame"><div id="dashboard-map"></div></div>
+        </section>
+        <aside class="customer-dashboard-side">
+          <section class="customer-medicine-cta"><span class="customer-cta-icon"><img class="customer-dashboard-image-icon" src="/icons/need_medicine.png" alt="" /></span><div><h2>Need Medicine?</h2><p>Search for a medicine, find nearby pharmacies, and reserve it before you go.</p><a class="customer-search-button" href="/search.html"><span class="customer-sprite sprite-search" aria-hidden="true"></span> Search Medicines <span class="customer-arrow" aria-hidden="true"></span></a></div></section>
+          <section class="card customer-quick-actions"><h2><span class="customer-sprite sprite-lightning" aria-hidden="true"></span> Quick Actions</h2>
+            <a href="/search.html"><i class="customer-sprite sprite-search"></i><span><strong>Search & Nearby</strong><small>Find medicines and nearby pharmacies</small></span><b class="customer-arrow" aria-hidden="true"></b></a>
+            <a href="/reservations.html"><i class="customer-sprite sprite-clipboard"></i><span><strong>My Reservations</strong><small>View and manage your bookings</small></span><b class="customer-arrow" aria-hidden="true"></b></a>
+            <a href="/notifications.html"><i class="customer-sprite sprite-bell"></i><span><strong>Notifications</strong><small>Check your latest updates</small></span><b class="customer-arrow" aria-hidden="true"></b></a>
+            <a href="/profile.html"><i class="customer-sprite sprite-user"></i><span><strong>Profile</strong><small>Manage your account information</small></span><b class="customer-arrow" aria-hidden="true"></b></a>
+          </section>
+        </aside>
       </div>
-
-      <div class="grid grid-4 mt-24">
-        <div class="card stat-card"><div class="stat-icon">&#9203;</div><div class="stat-label">Pending</div><div class="stat-value">${counts.pending || 0}</div></div>
-        <div class="card stat-card"><div class="stat-icon">&#9989;</div><div class="stat-label">Confirmed</div><div class="stat-value">${counts.confirmed || 0}</div></div>
-        <div class="card stat-card"><div class="stat-icon">&#128230;</div><div class="stat-label">Completed</div><div class="stat-value">${counts.completed || 0}</div></div>
-        <div class="card stat-card"><div class="stat-icon">&#128276;</div><div class="stat-label">Unread Notifications</div><div class="stat-value">${data.unreadNotifications}</div></div>
-      </div>
-
-           <div class="mt-24">
-        <div class="card-title" style="margin-top:0;">Recent Reservations</div>
-        <div class="card">
-          ${data.recentReservations.length ? `
-            <div class="table-wrap">
-              <table>
-                <thead><tr><th>Medicine</th><th>Qty</th><th>Pharmacy</th><th>Status</th><th>Reserved</th></tr></thead>
-                <tbody>
-                  ${data.recentReservations.map(r => `
-                    <tr>
-                      <td>${escapeHtml(r.medicine_name)}</td>
-                      <td>${r.quantity}</td>
-                      <td>${escapeHtml(r.pharmacy_name)}</td>
-                      <td>${statusBadge(r.status)}</td>
-                      <td class="muted text-sm">${new Date(r.reserved_at).toLocaleString()}</td>
-                    </tr>`).join('')}
-                </tbody>
-              </table>
-            </div>
-          ` : `
-            <div class="empty-state">
-              <div class="icon">&#128203;</div>
-              <h3>No reservations yet</h3>
-              <p>Search for a medicine and reserve it at a nearby pharmacy.</p>
-            </div>
-          `}
-        </div>
-      </div>
-
-          
-
-      <div class="card mt-24">
-        <div class="card-title">P.A.I. Assistant</div>
-        <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
-          <div class="field" style="flex:1;min-width:220px;">
-            <label>Ask PillPoint</label>
-            <input id="pai-message" type="text" placeholder="Try: Find paracetamol or reserve amoxicillin" style="min-width:0;" />
-          </div>
-          <button id="pai-submit" class="btn btn-primary" type="button">Ask</button>
-        </div>
-        <div id="pai-result" class="mt-16" role="log" aria-live="polite">
-          <div class="alert alert-info">P.A.I. — Pharmacy Assistant: How can I help you find a medicine or use PillPoint?</div>
-        </div>
-      </div>
-
-      <div class="section-title">Top Rated Pharmacies</div>
-      ${data.topRatedPharmacies.length ? `
-        <div class="top-rated-pharmacies">
-          ${data.topRatedPharmacies.map(pharmacy => `
-            <a class="card top-rated-card" href="/pharmacy-profile.html?id=${pharmacy.id}">
-              <div class="top-rated-avatar">
-                ${pharmacy.profile_image || pharmacy.cover_image
-                  ? `<img src="${escapeHtml(pharmacy.profile_image || pharmacy.cover_image)}" alt="" />`
-                  : '<span aria-hidden="true">Rx</span>'}
-              </div>
-              <div class="top-rated-details">
-                <strong>${escapeHtml(pharmacy.name)}</strong>
-                <span class="text-sm muted">${escapeHtml(pharmacy.address)}</span>
-                <span class="top-rated-score"><span aria-hidden="true">${'★'.repeat(Math.round(pharmacy.average_rating))}</span> ${pharmacy.average_rating} · ${pharmacy.rating_count} rating${pharmacy.rating_count === 1 ? '' : 's'}</span>
-              </div>
-            </a>`).join('')}
-        </div>
-      ` : `
-        <div class="card empty-state">
-          <div class="icon">&#9733;</div>
-          <p>Verified pharmacy partners will appear here after customers leave ratings.</p>
-        </div>
-      `}
-
-      <div class="section-title">Nearby Pharmacies</div>
-      <div class="card"><div class="map-placeholder"><div id="dashboard-map"></div></div></div>
+      <section class="customer-health-banner"><span class="customer-health-mark"><img class="customer-dashboard-image-icon" src="/icons/quality_medicine_close_to_you.png" alt="" /></span><div><strong>Quality Medicines. Closer to You.</strong><p>PillPoint connects you with trusted pharmacies in your area,<br class="desktop-break"> so you can get the care you need, when you need it.</p></div><span class="customer-health-pulse"><img class="customer-dashboard-image-icon" src="/icons/health_made_easier.png" alt="" /></span><img class="customer-health-caption" src="/icons/health_made_easier_text.png?v=teal" alt="Health made easier" /></section>
+      <section class="customer-secondary-content">
+        <details class="card customer-reservations-details"><summary>Recent reservations <span>${data.recentReservations.length}</span></summary>${data.recentReservations.length ? `<div class="table-wrap"><table><thead><tr><th>Medicine</th><th>Qty</th><th>Pharmacy</th><th>Status</th><th>Reserved</th></tr></thead><tbody>${data.recentReservations.map(r => `<tr><td>${escapeHtml(r.medicine_name)}</td><td>${r.quantity}</td><td>${escapeHtml(r.pharmacy_name)}</td><td>${statusBadge(r.status)}</td><td class="muted text-sm">${new Date(r.reserved_at).toLocaleString()}</td></tr>`).join('')}</tbody></table></div>` : `<div class="empty-state"><h3>No reservations yet</h3><p>Search for a medicine and reserve it at a nearby pharmacy.</p></div>`}</details>
+        <details class="card customer-assistant-details"><summary>Ask the PillPoint assistant</summary><div class="customer-assistant-form"><input id="pai-message" type="text" aria-label="Ask PillPoint" placeholder="Find a medicine or ask a question"/><button id="pai-submit" class="btn btn-primary" type="button">Ask</button></div><div id="pai-result" role="log" aria-live="polite"><div class="alert alert-info">How can I help you find a medicine or use PillPoint?</div></div></details>
+        <details class="card customer-pharmacy-details"><summary>Top rated pharmacies <span>${data.topRatedPharmacies.length}</span></summary>${data.topRatedPharmacies.length ? `<div class="top-rated-pharmacies">${data.topRatedPharmacies.map(pharmacy => `<a class="card top-rated-card" href="/pharmacy-profile.html?id=${pharmacy.id}"><div class="top-rated-avatar">${pharmacy.profile_image || pharmacy.cover_image ? `<img src="${escapeHtml(pharmacy.profile_image || pharmacy.cover_image)}" alt="" />` : '<span aria-hidden="true">Rx</span>'}</div><div class="top-rated-details"><strong>${escapeHtml(pharmacy.name)}</strong><span class="text-sm muted">${escapeHtml(pharmacy.address)}</span><span class="top-rated-score"><span class="customer-sprite sprite-star" aria-hidden="true"></span> ${pharmacy.average_rating} ratings</span></div></a>`).join('')}</div>` : '<p class="customer-empty-note">Verified pharmacy partners will appear here after customers leave ratings.</p>'}</details>
+      </section>
     `;
-
     bindPaiAssistant();
     loadNearbyMap();
   } catch (err) {
