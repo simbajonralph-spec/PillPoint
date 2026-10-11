@@ -1,6 +1,7 @@
 (async function () {
   const user = await guardPage(['pharmacy_staff'], 'Alert Center', 'Actionable inventory, expiry, demand, and reservation alerts');
   if (!user) return;
+  document.body.classList.add('pharmacy-alerts-page');
   const content = document.getElementById('page-content');
   content.innerHTML = skeletonLoader('table', 5);
 

@@ -1,11 +1,13 @@
 (async function () {
   const user = await guardPage(['pharmacy_staff'], 'Sales History', 'Completed reservation sales by product and date');
   if (!user) return;
+  document.body.classList.add('pharmacy-sales-page');
 
   const content = document.getElementById('page-content');
   content.innerHTML = `
-    <div class="card">
-      <div class="filters-row">
+    <div class="sales-history-workspace">
+      <div class="card sales-period-card">
+        <div class="sales-period-copy"><span class="sales-period-mark"></span><div><div class="sales-period-title">Sales overview</div><p>Review completed reservation sales across your selected period.</p></div></div>
         <div class="field">
           <label for="period-filter">Sales period</label>
           <select id="period-filter">
@@ -17,11 +19,9 @@
           </select>
         </div>
       </div>
-      <div id="summary" class="grid grid-2 mt-16"></div>
-      <div class="section-title">Units sold by product line</div>
-      <div id="product-totals" class="table-wrap"></div>
-      <div class="section-title">Sales history by day</div>
-      <div id="daily-sales" class="table-wrap"></div>
+      <div id="summary" class="grid grid-2 sales-summary-grid"></div>
+      <section class="card sales-history-panel"><header class="sales-panel-heading"><div><h2>Units sold by product line</h2><p>Completed sales grouped by medicine and deployment status.</p></div><span class="sales-panel-icon">${iconSvg('chart', 20)}</span></header><div id="product-totals" class="table-wrap"></div></section>
+      <section class="card sales-history-panel"><header class="sales-panel-heading"><div><h2>Sales history by day</h2><p>Daily product quantities and revenue.</p></div><span class="sales-panel-icon">${iconSvg('calendar', 20)}</span></header><div id="daily-sales" class="table-wrap"></div></section>
     </div>
   `;
 
@@ -38,16 +38,17 @@
       const units = data.productTotals.reduce((total, product) => total + product.units_sold, 0);
       const revenue = data.productTotals.reduce((total, product) => total + product.revenue, 0);
       summary.innerHTML = `
-        <article class="card stat-card"><div class="stat-label">Units sold</div><div class="stat-value">${units}</div></article>
-        <article class="card stat-card"><div class="stat-label">Sales revenue</div><div class="stat-value">${money(revenue)}</div></article>
+        <article class="card stat-card sales-summary-card" data-tone="teal"><span class="sales-summary-icon">${iconSvg('package', 22)}</span><div><div class="stat-label">Units sold</div><div class="stat-value">${units.toLocaleString()}</div><div class="sales-summary-note">Across the selected period</div></div></article>
+        <article class="card stat-card sales-summary-card" data-tone="green"><span class="sales-summary-icon">${iconSvg('wallet', 22)}</span><div><div class="stat-label">Sales revenue</div><div class="stat-value">${money(revenue)}</div><div class="sales-summary-note">From completed reservations</div></div></article>
       `;
 
+      const maxUnits = Math.max(1, ...data.productTotals.map(product => Number(product.units_sold || 0)));
       productTotals.innerHTML = data.productTotals.length ? `
         <table>
           <thead><tr><th>Product line</th><th>Deployment</th><th>Units sold</th><th>Revenue</th><th>Last sale</th></tr></thead>
           <tbody>${data.productTotals.map(product => `
             <tr>
-              <td><strong>${escapeHtml(product.medicine_name)}</strong>${product.brand ? `<div class="text-sm muted">${escapeHtml(product.brand)}</div>` : ''}</td>
+              <td><strong>${escapeHtml(product.medicine_name)}</strong>${product.brand ? `<div class="text-sm muted">${escapeHtml(product.brand)}</div>` : ''}<span class="sales-product-track"><span style="width:${Math.max(2, Number(product.units_sold || 0) / maxUnits * 100)}%"></span></span></td>
               <td>${product.deployed ? 'Currently deployed' : 'Not currently deployed'}</td>
               <td>${product.units_sold}</td>
               <td>${money(product.revenue)}</td>

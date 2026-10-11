@@ -1,6 +1,7 @@
 (async function () {
   const user = await guardPage(['pharmacy_staff'], 'Reservations', 'Process reservation holds, pickup deadlines, and customer updates');
   if (!user) return;
+  document.body.classList.add('pharmacy-reservations-page');
   const content = document.getElementById('page-content');
   content.innerHTML = `
     <div class="card">

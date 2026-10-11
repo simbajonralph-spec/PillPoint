@@ -4,25 +4,17 @@
   document.body.classList.add('inventory-page');
   const content = document.getElementById('page-content');
   content.innerHTML = `
-    <div class="mt-8">
-      <div class="flex justify-between items-center" style="flex-wrap:wrap;gap:12px;">
-        <div>
-          <div class="page-subtitle">One place to manage products, stock movements, batches, expiry, and publishing.</div>
-        </div>
-        <div class="flex gap-8" style="flex-wrap:wrap;">
-          <button class="btn btn-primary" id="add-btn">+ Add Medicine</button>
-        </div>
-      </div>
-      <div id="summary-cards" class="grid mt-16" style="grid-template-columns: repeat(4, minmax(170px, 1fr)); gap:14px;"></div>
-      <div id="inventory-error" class="mt-12" role="alert"></div>
-      <div id="add-form" class="card mt-16" style="display:none;"></div>
-      <nav class="inventory-center-tabs mt-16" role="tablist" aria-label="Inventory sections">
+      <div class="mt-8 inventory-workspace">
+      <nav class="inventory-center-tabs" role="tablist" aria-label="Inventory sections">
         <button type="button" role="tab" id="inventory-tab-products" aria-controls="inventory-panel-products" aria-selected="true" data-inventory-tab="products">Products</button>
         <button type="button" role="tab" id="inventory-tab-movements" aria-controls="inventory-panel-movements" aria-selected="false" data-inventory-tab="movements">Stock Movement</button>
         <button type="button" role="tab" id="inventory-tab-batches" aria-controls="inventory-panel-batches" aria-selected="false" data-inventory-tab="batches">Batches</button>
         <button type="button" role="tab" id="inventory-tab-expiration" aria-controls="inventory-panel-expiration" aria-selected="false" data-inventory-tab="expiration">Expiration</button>
         <button type="button" role="tab" id="inventory-tab-publishing" aria-controls="inventory-panel-publishing" aria-selected="false" data-inventory-tab="publishing">Publishing</button>
       </nav>
+      <div id="summary-cards" class="grid mt-16" style="grid-template-columns: repeat(6, minmax(170px, 1fr)); gap:14px;"></div>
+      <div id="inventory-error" class="mt-12" role="alert"></div>
+      <div id="add-form" class="card mt-16" style="display:none;"></div>
       <section class="inventory-center-panel mt-16" role="tabpanel" id="inventory-panel-products" aria-labelledby="inventory-tab-products" data-inventory-panel="products">
         <div id="inventory-integrity-warning" class="mt-12" role="status"></div>
         <div class="card inventory-products-toolbar">
@@ -34,6 +26,8 @@
               <select id="inventory-category-filter" aria-label="Filter by category"><option value="all">All Categories</option></select>
               <label class="sr-only" for="inventory-status-filter">Stock status</label>
               <select id="inventory-status-filter" aria-label="Filter by stock status"><option value="all">All Stock Status</option><option value="available">Available</option><option value="low">Low Stock</option><option value="out">Out of Stock</option></select>
+              <button type="button" class="btn btn-outline inventory-filter-button" id="inventory-filter-toggle">${iconSvg('sliders', 17)} Filter</button>
+              <button type="button" class="btn btn-primary inventory-add-button" id="add-btn">${iconSvg('plus', 17)} Add Medicine</button>
             </div>
           </div>
         </div>
@@ -431,21 +425,19 @@
     const stats = summarizeInventory(inventoryRows);
     const integrityIssues = inventoryRows.filter(item => !item.integrity_ok).length;
     const cards = [
-      { label: 'Total Medicines', value: `${stats.totalMedicines} Medicines`, tone: 'teal' },
-      { label: 'Total Stock', value: `${stats.totalStock} Units`, tone: 'blue' },
-      { label: 'Low Stock', value: `${stats.lowStock} Medicines`, tone: 'amber' },
-      { label: 'Out of Stock', value: `${stats.outOfStock} Medicines`, tone: 'rose' },
-      { label: 'Expiring Soon', value: `${stats.expiringSoon} Batches`, tone: 'orange' },
-      { label: 'Expired', value: `${stats.expired} Batches`, tone: 'red' },
-      { label: 'Reserved Stock', value: `${stats.reserved} Units`, tone: 'purple' },
-      { label: 'Inventory Value', value: money(stats.inventoryValue), tone: 'green' },
-      { label: 'Integrity Warnings', value: `${integrityIssues} Products`, tone: integrityIssues ? 'red' : 'green' },
+      { label: 'Total Medicines', value: stats.totalMedicines, unit: 'Inventory listings', tone: 'teal', icon: 'pill' },
+      { label: 'Total Stock', value: stats.totalStock, unit: 'Units in inventory', tone: 'blue', icon: 'box' },
+      { label: 'Low Stock', value: stats.lowStock, unit: 'Needs attention', tone: 'amber', icon: 'triangle' },
+      { label: 'Out of Stock', value: stats.outOfStock, unit: 'Unavailable', tone: 'rose', icon: 'refresh' },
+      { label: 'Reserved Stock', value: stats.reserved, unit: 'Units reserved', tone: 'purple', icon: 'shield' },
+      { label: 'Inventory Value', value: money(stats.inventoryValue), unit: 'Current stock value', tone: 'green', icon: 'chart' },
     ];
     const summaryBox = document.getElementById('summary-cards');
     summaryBox.innerHTML = cards.map(card => `
-      <div class="card stat-card" data-tone="${card.tone}" style="padding:14px 16px;">
-        <div class="stat-label">${escapeHtml(card.label)}</div>
-        <div class="stat-value" style="font-size:1.7rem; margin-top:8px;">${escapeHtml(card.value)}</div>
+      <div class="card stat-card inventory-kpi" data-tone="${card.tone}">
+        <span class="inventory-kpi-icon">${iconSvg(card.icon, 22)}</span>
+        <div class="inventory-kpi-copy"><div class="stat-label">${escapeHtml(card.label)}</div>
+        <div class="stat-value">${escapeHtml(String(card.value))}</div><div class="inventory-kpi-unit">${escapeHtml(card.unit)}</div></div>
       </div>
     `).join('');
     const integrityWarning = document.getElementById('inventory-integrity-warning');
@@ -559,12 +551,11 @@
     const table = document.getElementById('inventory-table');
     if (!table) return;
     const head = `
-      <div class="inventory-publish-toolbar">
+      <div class="inventory-products-heading"><div class="card-title" style="margin:0;">Products and publishing status</div><div class="inventory-publish-toolbar">
         <span id="publishing-selection-count" class="text-sm muted">0 products selected</span>
         <button type="button" class="btn btn-primary btn-sm" id="bulk-publish-btn">Publish selected</button>
         <button type="button" class="btn btn-outline btn-sm" id="bulk-unpublish-btn">Unpublish selected</button>
-      </div>
-      <div class="card-title" style="margin:0;">Products and publishing status</div>
+      </div></div>
       <table>
         <thead>
           <tr>
@@ -650,16 +641,16 @@
       const expiry = item.next_expiration_date ? new Date(item.next_expiration_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'No Expiry';
       const publishingIssues = item.publish_issues || [];
       const publishedBadge = Number(item.deployed) && Number(item.customer_visible)
-          ? '<span class="badge badge-deployed">Published · customer-visible</span>'
+          ? '<span class="badge badge-deployed">✓ Published</span>'
           : Number(item.deployed)
-            ? `<span class="badge badge-out" title="${escapeHtml(publishingIssues.join(' '))}">Not visible · needs attention</span>`
+            ? `<span class="badge badge-out" title="${escapeHtml(publishingIssues.join(' '))}">Not Visible</span>`
             : publishingIssues.length
-              ? `<span class="badge badge-draft" title="${escapeHtml(publishingIssues.join(' '))}">Unpublished · needs attention</span>`
-              : '<span class="badge badge-draft">Unpublished</span>';
+              ? `<span class="badge badge-draft" title="${escapeHtml(publishingIssues.join(' '))}">Unpublished</span>`
+              : '<span class="badge badge-draft">◉ Unpublished</span>';
       return `
         <tr>
           <td><input type="checkbox" data-select-inventory="${item.id}" aria-label="Select ${escapeHtml(item.medicine_name)}" ${selectedInventoryIds.has(Number(item.id)) ? 'checked' : ''} /></td>
-          <td><strong>${escapeHtml(item.medicine_name)}</strong>${item.brand ? `<div class="text-sm muted">${escapeHtml(item.brand)}</div>` : ''}</td>
+          <td><div class="inventory-medicine-cell"><img class="inventory-medicine-image" src="/medicine_images/${encodeURIComponent(String(item.medicine_name || '').trim().split(/\s+/)[0].toLowerCase())}.jpg" alt="" loading="lazy" onerror="this.hidden=true" /><div><strong>${escapeHtml(item.medicine_name)}</strong>${item.brand ? `<div class="text-sm muted">${escapeHtml(item.brand)}</div>` : ''}</div></div></td>
           <td>${escapeHtml(item.category || 'Uncategorized')}</td>
           <td>${total}</td>
           <td>${reserved}</td>

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Profile — PillPoint</title>
 <link rel="icon" type="image/svg+xml" href="/img/logo-mark.svg" />
-<link rel="stylesheet" href="/css/style.css" />
+<link rel="stylesheet" href="/css/style.css?v=20261011-profile-type-size" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 </head>
 <body>
@@ -19,6 +19,7 @@
   const content = document.getElementById('page-content');
 
   if (user.role === 'pharmacy_staff') {
+    document.body.classList.add('pharmacy-staff-profile-page');
     document.querySelector('.topbar-heading h1').textContent = 'Pharmacy Profile';
     document.querySelector('.topbar-heading .sub').textContent = 'Manage your pharmacy identity and business details';
     await renderPharmacyProfile();
@@ -108,55 +109,101 @@
     let profileImageData = p.profile_image || p.store_image || null;
     let coverImageData = p.cover_image || null;
     const avatarFallback = () => `<span class="pharmacy-avatar-name">${escapeHtml(p.name)}</span>`;
-    const coverFallback = () => `<div class="pharmacy-cover-fallback"><strong>${escapeHtml(p.name)}</strong></div>`;
+    const coverFallback = () => '<div class="pharmacy-cover-fallback" aria-hidden="true"></div>';
     const averageRating = data.reviews.length
       ? (data.reviews.reduce((total, review) => total + review.rating, 0) / data.reviews.length).toFixed(1)
       : '—';
 
+    const ratingCounts = data.ratingDistribution || [5, 4, 3, 2, 1].map(rating => ({ rating, count: data.reviews.filter(review => review.rating === rating).length }));
+    const stars = rating => `${'★'.repeat(rating)}${'☆'.repeat(5 - rating)}`;
+    const infoRow = (icon, label, value) => `<div class="pharmacy-info-row"><span class="pharmacy-info-icon">${icon}</span><span class="pharmacy-info-label">${label}</span><span class="pharmacy-info-value">${value || 'Not provided'}</span></div>`;
+    const mapUrl = `https://www.openstreetmap.org/?mlat=${encodeURIComponent(p.latitude)}&mlon=${encodeURIComponent(p.longitude)}#map=16/${encodeURIComponent(p.latitude)}/${encodeURIComponent(p.longitude)}`;
     content.innerHTML = `
-      <div class="pharmacy-settings">
-        <section class="card pharmacy-settings-hero">
-          <div class="pharmacy-cover-preview" id="cover-preview">
-            ${coverImageData ? `<img src="${escapeHtml(coverImageData)}" alt="Pharmacy cover preview" />` : coverFallback()}
-          </div>
-          <div class="pharmacy-settings-identity">
-            <div class="pharmacy-avatar-preview" id="profile-preview">
-              ${profileImageData ? `<img src="${escapeHtml(profileImageData)}" alt="Pharmacy profile preview" />` : avatarFallback()}
+      <div class="pharmacy-profile-page">
+        <section class="pharmacy-profile-hero">
+          <div class="pharmacy-profile-cover" id="cover-preview">${coverImageData ? `<img src="${escapeHtml(coverImageData)}" alt="Pharmacy cover" />` : coverFallback()}</div>
+          <div class="pharmacy-profile-hero-content">
+            <div class="pharmacy-avatar-preview" id="profile-preview">${profileImageData ? `<img src="${escapeHtml(profileImageData)}" alt="${escapeHtml(p.name)} logo" />` : avatarFallback()}</div>
+            <div class="pharmacy-profile-headline">
+              <span class="pharmacy-status-chip ${verificationStatus === 'APPROVED' ? 'is-approved' : ''}">${escapeHtml(statusLabels[verificationStatus] || verificationStatus)}</span>
+              <h2 id="pharmacy-profile-name">${escapeHtml(p.name)}</h2>
             </div>
-            <div>
-              <h2>${escapeHtml(p.name)}</h2>
-              <div><span class="badge ${verificationStatus === 'APPROVED' ? 'badge-verified' : ['SUSPENDED', 'REJECTED', 'CORRECTION_REQUIRED'].includes(verificationStatus) ? 'badge-warning' : 'badge-unverified'}">${escapeHtml(statusLabels[verificationStatus] || verificationStatus)}</span></div>
-            </div>
-            <div class="pharmacy-settings-rating"><strong>★ ${averageRating}</strong><span>${data.reviews.length} review${data.reviews.length === 1 ? '' : 's'}</span></div>
+            <div class="pharmacy-profile-actions"><button class="btn btn-outline" id="edit-profile-trigger" type="button">Edit Profile</button><a class="btn btn-outline" href="${mapUrl}" target="_blank" rel="noopener">View on Map</a></div>
           </div>
         </section>
         ${['CORRECTION_REQUIRED', 'REVERIFICATION_REQUIRED'].includes(verificationStatus) ? `
-          <section class="alert alert-warning mt-16" role="status">
-            <strong>${statusLabels[verificationStatus]}</strong>
-            <p class="mt-8">${escapeHtml(p.correction_reason || p.verification_reason || 'Update your pharmacy information and documents before resubmitting.')}</p>
-            <p class="text-sm mt-8">Save corrected information below, then submit your registration for review again.</p>
-            <button type="button" class="btn btn-primary btn-sm mt-12" id="resubmit-verification">Submit for Review</button>
-          </section>` : ''}
-        <section class="card mt-16">
+          <section class="alert alert-warning mt-16" role="status"><strong>${statusLabels[verificationStatus]}</strong><p class="mt-8">${escapeHtml(p.correction_reason || p.verification_reason || 'Update your pharmacy information and documents before resubmitting.')}</p><button type="button" class="btn btn-primary btn-sm mt-12" id="resubmit-verification">Submit for Review</button></section>` : ''}
+        <div class="pharmacy-profile-grid" id="profile-overview">
+          <div class="pharmacy-profile-column">
+            <section class="pharmacy-profile-card pharmacy-info-card">
+              <div class="pharmacy-section-heading"><span class="pharmacy-heading-icon">▣</span><div><h3>Pharmacy Information</h3><p>Basic details about your pharmacy</p></div></div>
+              <div class="pharmacy-info-list">
+                ${infoRow('▣', 'Pharmacy Name', escapeHtml(p.name))}
+                ${infoRow('◇', 'Business Type', escapeHtml(p.business_type || 'Pharmacy'))}
+                ${infoRow('⬡', 'License Number', escapeHtml(p.license_number || 'Not provided'))}
+                ${infoRow('♙', 'Owner / Manager', escapeHtml([p.owner_first_name, p.owner_last_name].filter(Boolean).join(' ')))}
+                ${infoRow('✉', 'Email Address', escapeHtml(p.business_email || ''))}
+                ${p.description ? infoRow('▤', 'Description', escapeHtml(p.description)) : ''}
+              </div>
+            </section>
+            <section class="pharmacy-profile-card pharmacy-license-card" id="profile-licenses">
+              <div class="pharmacy-section-heading"><span class="pharmacy-heading-icon">⬡</span><div><h3>Accreditation &amp; Licenses</h3><p>Verification and compliance</p></div></div>
+              <div class="pharmacy-license-chips"><span>${p.has_business_permit ? '✓ Business permit on file' : '• Business permit not uploaded'}</span><span>${verificationStatus === 'APPROVED' ? '✓ Pharmacy verified' : '• Verification pending'}</span></div>
+              <button class="btn btn-outline btn-sm" type="button" data-open-edit>Manage documents</button>
+            </section>
+          </div>
+          <div class="pharmacy-profile-column">
+            <section class="pharmacy-profile-card" id="profile-contact">
+              <div class="pharmacy-section-heading"><span class="pharmacy-heading-icon">▣</span><div><h3>Contact Information</h3><p>Get in touch with us</p></div></div>
+              <div class="pharmacy-contact-list">
+                <div><span>☎</span><span>${escapeHtml(p.phone || 'Phone not provided')}</span>${p.phone ? `<a href="tel:${escapeHtml(p.phone)}">Call</a>` : ''}</div>
+                <div><span>✉</span><span>${escapeHtml(p.business_email || 'Email not provided')}</span>${p.business_email ? `<a href="mailto:${escapeHtml(p.business_email)}">Email</a>` : ''}</div>
+              </div>
+            </section>
+            <section class="pharmacy-profile-card pharmacy-hours-card" id="profile-hours">
+              <div class="pharmacy-section-heading"><span class="pharmacy-heading-icon">◷</span><div><h3>Business Hours</h3><p>Hours of operation</p></div></div>
+              <p class="pharmacy-hours-value">${escapeHtml(p.hours || 'Business hours have not been added yet.')}</p>
+            </section>
+            <section class="pharmacy-profile-card pharmacy-map-card">
+              <div class="pharmacy-section-heading"><span class="pharmacy-heading-icon">⌖</span><div><h3>Location</h3><p>Find your pharmacy on the map</p></div></div>
+              <div class="pharmacy-map-preview" id="profile-map"></div>
+              <div class="pharmacy-map-footer"><p class="pharmacy-map-address">⌖ <span>${escapeHtml(p.address || 'Address not provided')}</span></p><a href="${mapUrl}" target="_blank" rel="noopener">Directions</a></div>
+            </section>
+          </div>
+          <div class="pharmacy-profile-column">
+            <section class="pharmacy-profile-card pharmacy-reviews-card" id="profile-reviews">
+              <div class="pharmacy-section-heading"><span class="pharmacy-heading-icon">★</span><div><h3>Ratings &amp; Reviews</h3><p>What customers say</p></div></div>
+              <div class="pharmacy-rating-summary"><strong>${averageRating}</strong><div><span class="pharmacy-hero-stars">${stars(Math.round(Number(averageRating) || 0))}</span><small>${data.reviews.length} reviews</small></div></div>
+              <div class="pharmacy-rating-bars">${ratingCounts.slice().sort((a, b) => b.rating - a.rating).map(item => { const percent = data.reviews.length ? Math.round(item.count / data.reviews.length * 100) : 0; return `<div><span>${item.rating} ★</span><span class="pharmacy-rating-track"><i style="width:${percent}%"></i></span><small>${percent}%</small></div>`; }).join('')}</div>
+              <a class="pharmacy-text-link" href="#profile-reviews-list">View all reviews →</a>
+            </section>
+            <section class="pharmacy-profile-card pharmacy-reviews-list" id="profile-reviews-list">
+              <div class="pharmacy-section-heading"><span class="pharmacy-heading-icon">✦</span><div><h3>Recent Reviews</h3><p>Customer feedback</p></div></div>
+              ${data.reviews.length ? data.reviews.slice(0, 3).map(review => `<article class="pharmacy-review-row"><div class="pharmacy-review-top"><strong>${escapeHtml(review.customer_username || review.customer_name)}</strong><span class="review-stars">${stars(review.rating)}</span></div><small>${new Date(review.updated_at).toLocaleDateString()}</small>${review.comment ? `<p>${escapeHtml(review.comment)}</p>` : ''}</article>`).join('') : '<div class="pharmacy-empty-reviews">No reviews yet</div>'}
+            </section>
+          </div>
+        </div>
+        <details class="pharmacy-profile-editor" id="profile-editor">
+          <summary>Edit pharmacy profile</summary>
+        <section class="pharmacy-edit-section">
           <div class="card-title">Pharmacy Identity</div>
           <div class="field"><label for="pharmacy-name-input">Pharmacy Name</label><input id="pharmacy-name-input" value="${escapeHtml(p.name)}" required /></div>
           <div class="grid grid-2">
             <div class="field">
               <label for="profile-image-input">Pharmacy Profile Photo <span class="muted text-sm">(optional)</span></label>
               <input id="profile-image-input" type="file" accept="image/png,image/jpeg,image/webp" />
-              <div class="text-sm muted mt-8">Skip or remove the photo to display your pharmacy name instead. Maximum 4MB.</div>
+              <div class="text-sm muted mt-8">Maximum 4MB.</div>
               <button class="btn btn-outline btn-sm mt-8" type="button" id="clear-profile-image">Remove photo</button>
             </div>
             <div class="field">
               <label for="cover-image-input">Pharmacy Cover Photo <span class="muted text-sm">(optional)</span></label>
               <input id="cover-image-input" type="file" accept="image/png,image/jpeg,image/webp" />
-              <div class="text-sm muted mt-8">Skip or remove the photo to use a pharmacy-name cover design. Maximum 4MB.</div>
+              <div class="text-sm muted mt-8">Maximum 4MB.</div>
               <button class="btn btn-outline btn-sm mt-8" type="button" id="clear-cover-image">Remove photo</button>
             </div>
           </div>
-          <p class="text-sm muted">Name and verification status changes are reflected across pharmacy listings and your account header.</p>
         </section>
-        <section class="card mt-16">
+        <section class="pharmacy-edit-section">
           <div class="card-title">Owner Information</div>
           <p class="text-sm muted">This information is visible only within your Pharmacy Profile.</p>
           <div class="grid grid-2">
@@ -164,7 +211,7 @@
             <div class="field"><label for="owner-last-name-input">Owner Last Name</label><input id="owner-last-name-input" value="${escapeHtml(p.owner_last_name || '')}" /></div>
           </div>
         </section>
-        <section class="card mt-16">
+        <section class="pharmacy-edit-section">
           <div class="card-title">Business Contact Information</div>
           <div class="grid grid-2">
             <div class="field"><label for="phone-input">Business / Pharmacy Contact Number</label><input id="phone-input" type="tel" value="${escapeHtml(p.phone || '')}" /></div>
@@ -187,25 +234,24 @@
           </div>
           <button class="btn btn-primary" id="save-btn">Save Changes</button>
         </section>
-        <section class="card mt-16">
-          <div class="card-title">Customer Ratings and Reviews</div>
-          <div class="pharmacy-rating-breakdown">
-            <div class="pharmacy-rating-breakdown-heading"><strong>${data.reviews.length ? `${averageRating} ★` : 'No ratings yet'}</strong><span>${data.reviews.length ? `Based on ${data.reviews.length} reviews` : 'No customer ratings have been submitted'}</span></div>
-            <div class="rating-distribution">${data.ratingDistribution.map(item => {
-              const percent = data.reviews.length ? Math.round(item.count / data.reviews.length * 100) : 0;
-              return `<div class="rating-distribution-row"><span>${item.rating} ${item.rating === 1 ? 'Star' : 'Stars'}</span><div class="rating-distribution-track"><span style="width:${percent}%"></span></div><span>${item.count}</span></div>`;
-            }).join('')}</div>
-          </div>
-          ${data.reviews.length ? data.reviews.map(review => `
-            <article class="pharmacy-review-row">
-              <div class="flex justify-between items-center"><strong>@${escapeHtml(review.customer_username || review.customer_name)}</strong><span class="review-stars">${'★'.repeat(review.rating)}${'☆'.repeat(5 - review.rating)}</span></div>
-              <div class="text-sm muted">${new Date(review.updated_at).toLocaleDateString()}</div>
-              ${review.comment ? `<p>${escapeHtml(review.comment)}</p>` : ''}
-            </article>`).join('') : '<div class="empty-state"><h3>No reviews yet</h3><p>Customer feedback will appear here.</p></div>'}
-          <p class="text-sm muted mt-16">Reviews are read-only for pharmacy staff.</p>
-        </section>
+        </details>
       </div>
     `;
+
+    const editor = document.getElementById('profile-editor');
+    const openEditor = () => { editor.open = true; editor.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+    editor.addEventListener('toggle', () => {
+      if (editor.open) setTimeout(() => map.invalidateSize(), 80);
+    });
+    document.getElementById('edit-profile-trigger').addEventListener('click', openEditor);
+    document.querySelectorAll('[data-open-edit]').forEach(button => button.addEventListener('click', openEditor));
+    if (Number.isFinite(Number(p.latitude)) && Number.isFinite(Number(p.longitude))) {
+      const previewMap = L.map('profile-map', { zoomControl: false, scrollWheelZoom: false, dragging: false }).setView([p.latitude, p.longitude], 15);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' }).addTo(previewMap);
+      L.marker([p.latitude, p.longitude]).addTo(previewMap);
+    } else {
+      document.getElementById('profile-map').innerHTML = '<span>Location pin not set</span>';
+    }
 
     function bindImagePreview(inputId, previewId, updateImage, renderFallback) {
       document.getElementById(inputId).addEventListener('change', () => {
@@ -307,7 +353,7 @@
         p.name = pharmacyName;
         p.profile_image = saved.pharmacy.profile_image;
         p.cover_image = saved.pharmacy.cover_image;
-        document.querySelector('.pharmacy-settings-identity h2').textContent = pharmacyName;
+        document.getElementById('pharmacy-profile-name').textContent = pharmacyName;
         document.querySelectorAll('.pharmacy-avatar-name').forEach(el => { el.textContent = pharmacyName; });
         document.querySelectorAll('.pharmacy-cover-fallback strong').forEach(el => { el.textContent = pharmacyName; });
         const topbarProfile = document.getElementById('topbar-pharmacy-profile');

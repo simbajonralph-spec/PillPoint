@@ -1,6 +1,7 @@
 (async function () {
   const user = await guardPage(null, 'Notifications', 'Application and email-logged notifications');
   if (!user) return;
+  if (user.role === 'pharmacy_staff') document.body.classList.add('pharmacy-notifications-page');
 
   const content = document.getElementById('page-content');
   content.innerHTML = `
@@ -30,12 +31,12 @@
       return;
     }
     list.innerHTML = visible.map(n => `
-      <div class="card" style="margin-bottom:12px; ${n.is_read ? '' : 'border-left:4px solid var(--teal);'}">
-        <div class="flex justify-between items-center">
-          <div style="font-weight:700">${escapeHtml(n.title)}</div>
-          <div class="text-sm muted">${new Date(n.created_at).toLocaleString()}</div>
+      <div class="card notification-card ${n.is_read ? 'notification-read' : 'notification-unread'}">
+        <div class="notification-card-heading">
+          <div class="notification-title">${escapeHtml(n.title)}</div>
+          <div class="text-sm muted notification-date">${new Date(n.created_at).toLocaleString()}</div>
         </div>
-        <p class="text-sm mt-8" style="color:var(--text)">${escapeHtml(n.message)}</p>
+        <p class="text-sm mt-8 notification-message">${escapeHtml(n.message)}</p>
         ${n.is_read ? '' : `<button class="btn btn-outline btn-sm mt-16 read-btn" data-id="${n.id}">Mark as read</button>`}
       </div>
     `).join('');

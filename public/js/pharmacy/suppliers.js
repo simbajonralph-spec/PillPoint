@@ -1,6 +1,7 @@
 (async function () {
   const user = await guardPage(['pharmacy_staff'], 'Supplier Center', 'Supplier contacts, products supplied, and traceable delivery history');
   if (!user) return;
+  document.body.classList.add('pharmacy-suppliers-page');
   const content = document.getElementById('page-content');
   const params = new URLSearchParams(window.location.search);
   const supplierId = params.get('id');

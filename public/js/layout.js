@@ -38,12 +38,16 @@ function buildShell(user, pageTitle, pageSub) {
       <span class="icon">${iconSvg(i.icon)}</span>${i.label}
     </a>`).join('');
 
+  const isPharmacy = user.role === 'pharmacy_staff';
   document.body.insertAdjacentHTML('afterbegin', `
-    <div class="app-shell" id="app-shell">
+    <div class="app-shell${isPharmacy ? ' pharmacy-dark' : ''}" id="app-shell">
       <aside class="sidebar" id="app-sidebar" aria-label="Main navigation">
         <div class="brand">
           <img src="/img/logo-mark.svg" alt="PillPoint" class="brand-badge" width="34" height="34" />
-          <div class="brand-name">PillPoint</div>
+          <div class="brand-name-wrap">
+            <div class="brand-name">PillPoint</div>
+            ${isPharmacy ? '<span class="brand-subtitle">Healthier Communities</span>' : ''}
+          </div>
         </div>
         <nav>${navHtml}</nav>
         <div class="divider"></div>
@@ -51,7 +55,7 @@ function buildShell(user, pageTitle, pageSub) {
           <span class="icon">${iconSvg('logout')}</span>Logout
         </button>
         <div class="user-box">
-          <div class="user-name">${escapeHtml(user.role === 'pharmacy_staff' ? (user.pharmacy_name || user.name) : user.name)}</div>
+          <div class="user-name">${escapeHtml(isPharmacy ? (user.pharmacy_name || user.name) : user.name)}</div>
           <div class="user-role">${escapeHtml(user.role.replace('_', ' '))}</div>
         </div>
       </aside>
@@ -66,14 +70,7 @@ function buildShell(user, pageTitle, pageSub) {
             ${pageSub ? `<div class="sub">${pageSub}</div>` : ''}
           </div>
           <div class="topbar-actions">
-            <a class="topbar-icon" href="/notifications.html" aria-label="Notifications" title="Notifications">
-              ${iconSvg('bell')}<span class="notification-count" id="topbar-notification-count" hidden></span>
-            </a>
-            ${user.role === 'pharmacy_staff' ? `
-            <a class="topbar-pharmacy-profile" id="topbar-pharmacy-profile" href="/profile.html" aria-label="Open ${escapeHtml(user.pharmacy_name || user.name)} Pharmacy Profile">
-              <span class="topbar-profile-avatar">${user.pharmacy_profile_image ? `<img src="${escapeHtml(user.pharmacy_profile_image)}" alt="" />` : '<span aria-hidden="true">Rx</span>'}</span>
-              <span class="topbar-user-name">${escapeHtml(user.pharmacy_name || user.name)}</span>
-            </a>` : `<div class="topbar-user">
+            ${!isPharmacy ? `<div class="topbar-user">
               <button type="button" class="topbar-profile-toggle" id="topbar-user-toggle" aria-label="Open user menu" aria-haspopup="menu" aria-expanded="false" aria-controls="topbar-user-menu">
                 <span class="topbar-profile-avatar">${user.profile_image ? `<img src="${escapeHtml(user.profile_image)}" alt="" />` : iconSvg('user', 18)}</span>
                 <span class="topbar-user-name">${escapeHtml(user.name)}</span>
@@ -82,7 +79,7 @@ function buildShell(user, pageTitle, pageSub) {
                 <a href="/profile.html" role="menuitem">${iconSvg('user', 16)}Profile</a>
                 <button type="button" id="topbar-logout" role="menuitem">${iconSvg('logout', 16)}Log out</button>
               </div>
-            </div>`}
+            </div>` : ''}
           </div>
         </div>
         <div class="content" id="page-content"></div>

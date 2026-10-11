@@ -4,7 +4,7 @@
 <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Pharmacy Profile — PillPoint</title>
 <link rel="icon" type="image/svg+xml" href="/img/logo-mark.svg" />
-<link rel="stylesheet" href="/css/style.css" />
+<link rel="stylesheet" href="/css/style.css?v=20261011-pharmacy-profile-refresh" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 </head>
 <body>
@@ -23,6 +23,7 @@
   if (user) {
     user = await guardPage(null, 'Pharmacy Profile', 'Everything currently available at this pharmacy');
     content = document.getElementById('page-content');
+    if (user?.role === 'pharmacy_staff') document.body.classList.add('pharmacy-staff-profile-page');
   } else {
     document.getElementById('public-profile-shell').hidden = false;
     content = document.getElementById('guest-page-content');
@@ -65,7 +66,7 @@
   const distributionTotal = data.ratingDistribution.reduce((total, item) => total + item.count, 0);
   const reviewSignInUrl = `/login.html?next=${encodeURIComponent(`/pharmacy-profile.html?id=${id}`)}`;
   content.innerHTML = `
-    <section class="card pharmacy-public-profile fade-in-up">
+    <section class="card pharmacy-public-profile pharmacy-profile-hero fade-in-up" id="profile-overview">
       <div class="pharmacy-cover-preview">
         ${p.cover_image ? `<img src="${escapeHtml(p.cover_image)}" alt="${escapeHtml(p.name)} cover" />` : `<div class="pharmacy-cover-fallback"><strong>${escapeHtml(p.name)}</strong></div>`}
       </div>
@@ -76,6 +77,7 @@
           ${(p.verification_status || (p.verified ? 'VERIFIED' : 'PENDING')) === 'VERIFIED' ? '<span class="badge badge-verified">Verified</span>' : '<span class="badge badge-unverified">Pending verification</span>'}
         </div>
         <div class="pharmacy-rating-summary">${p.rating_count ? `<strong>★ ${p.average_rating}</strong><span>Based on ${p.rating_count} review${p.rating_count === 1 ? '' : 's'}</span>` : '<strong>No ratings yet</strong><span>Be the first to review</span>'}</div>
+        <div class="pharmacy-profile-actions">${user?.role === 'pharmacy_staff' ? '<a class="btn btn-primary btn-sm" href="/profile.html">Edit Profile</a>' : ''}<a class="btn btn-outline btn-sm" href="#profile-location">View Location</a></div>
       </div>
       <div class="pharmacy-public-details">
         ${p.rating_count ? `<div class="pharmacy-stars" aria-label="Average rating ${p.average_rating} out of 5">${starsFor(Math.round(p.average_rating))} <strong>${p.average_rating} / 5</strong></div>` : '<div class="pharmacy-stars">☆ No ratings yet</div>'}
@@ -90,8 +92,11 @@
       </div>
     </section>
 
-    <section class="card mt-16">
-      <div class="card-title">Ratings and Reviews</div>
+    <nav class="pharmacy-profile-tabs" aria-label="Pharmacy profile sections"><a href="#profile-overview" class="active">Overview</a><a href="#profile-reviews">Ratings &amp; Reviews</a><a href="#profile-location">Location</a><a href="#profile-products">Products</a></nav>
+
+    <div class="pharmacy-profile-content-grid">
+    <section class="card mt-16 pharmacy-profile-reviews" id="profile-reviews">
+      <div class="card-title">Ratings and Reviews <span class="pharmacy-review-count">${p.rating_count || 0}</span></div>
       ${canReview ? `
         ${data.myRating ? `<div class="your-review-summary"><strong>Your Review</strong><span class="review-stars">${starsFor(data.myRating.rating)} <span class="rating-description">${ratingDescription(data.myRating.rating)}</span></span><p>${escapeHtml(data.myRating.comment || 'No written comment.')}</p><div class="flex" style="gap:8px;flex-wrap:wrap;"><button type="button" class="btn btn-outline btn-sm" id="edit-review">Edit Review</button><button type="button" class="btn btn-outline btn-sm" id="delete-review">Delete Review</button></div></div>` : ''}
         <div class="rating-form" id="rating-form" ${data.myRating ? 'hidden' : ''}>
@@ -121,14 +126,13 @@
       </div>
     </section>
 
-    <div class="card mt-16">
-      <div class="map-placeholder" style="height:260px;"><div id="profile-map"></div></div>
-    </div>
+    <section class="card mt-16 pharmacy-profile-location" id="profile-location"><div class="card-title">Location &amp; Directions</div><div class="map-placeholder" style="height:260px;"><div id="profile-map"></div></div><p class="text-sm muted pharmacy-profile-address">${escapeHtml(p.address)}</p></section>
 
-    <div class="section-title">Currently Selling Products</div>
-    <div class="card">
+    <section class="card mt-16 pharmacy-profile-products" id="profile-products">
+      <div class="card-title">Currently Selling Products <span class="pharmacy-review-count">${data.products.length}</span></div>
       <div class="field"><label>Search products at this pharmacy</label><input type="text" id="product-filter" placeholder="e.g. Paracetamol" /></div>
       <div id="products"></div>
+    </section>
     </div>
   `;
 

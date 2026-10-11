@@ -765,15 +765,522 @@ footer.site-footer { background: var(--navy); color: #94a3b8; padding: 24px 6vw;
 .inventory-center-panel table { min-width: 700px; }
 .inventory-center-panel th, .inventory-center-panel td { vertical-align: middle; }
 
+/* Inventory workspace refresh */
+.inventory-page .content { padding: 22px 24px; }
+.inventory-page .content > .mt-8 { max-width: none; }
+.inventory-page #summary-cards { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; gap: 12px !important; margin-top: 18px; }
+.inventory-page #summary-cards .inventory-kpi {
+  display: flex; min-height: 96px; align-items: center; gap: 12px; padding: 14px 15px !important;
+  border: 1px solid rgba(34,211,238,.24); border-left: 3px solid #14B8A6; border-radius: 11px;
+  background: linear-gradient(145deg, rgba(8,52,53,.92), rgba(5,25,39,.96));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.035), 0 8px 20px rgba(0,0,0,.16);
+}
+.inventory-page #summary-cards .inventory-kpi[data-tone="blue"] { border-left-color: #22D3EE; }
+.inventory-page #summary-cards .inventory-kpi[data-tone="amber"] { border-left-color: #F59E0B; }
+.inventory-page #summary-cards .inventory-kpi[data-tone="rose"] { border-left-color: #F43F5E; }
+.inventory-page #summary-cards .inventory-kpi[data-tone="purple"] { border-left-color: #8B5CF6; }
+.inventory-page #summary-cards .inventory-kpi[data-tone="green"] { border-left-color: #10B981; }
+.inventory-kpi-icon { display: grid; width: 46px; height: 46px; flex: 0 0 46px; place-items: center; border-radius: 13px; color: #d1fae5; background: linear-gradient(145deg, rgba(16,185,129,.65), rgba(5,150,105,.2)); box-shadow: inset 0 0 0 1px rgba(110,231,183,.2); }
+.inventory-kpi[data-tone="blue"] .inventory-kpi-icon { color: #dbeafe; background: linear-gradient(145deg, rgba(14,165,233,.75), rgba(37,99,235,.24)); }
+.inventory-kpi[data-tone="amber"] .inventory-kpi-icon { color: #fef3c7; background: linear-gradient(145deg, rgba(217,119,6,.8), rgba(180,83,9,.24)); }
+.inventory-kpi[data-tone="rose"] .inventory-kpi-icon { color: #ffe4e6; background: linear-gradient(145deg, rgba(225,29,72,.75), rgba(190,24,93,.23)); }
+.inventory-kpi[data-tone="purple"] .inventory-kpi-icon { color: #ede9fe; background: linear-gradient(145deg, rgba(109,40,217,.75), rgba(91,33,182,.25)); }
+.inventory-kpi-copy { min-width: 0; }
+.inventory-page #summary-cards .stat-label { color: #dce9f4; font-size: 12px; letter-spacing: 0; text-transform: none; }
+.inventory-page #summary-cards .stat-value { margin-top: 3px !important; color: #f8fafc; font-size: 23px !important; font-weight: 800; }
+.inventory-kpi-unit { margin-top: 3px; color: #91acc2; font-size: 10px; }
+.inventory-page .inventory-center-tabs { position: static; display: flex; justify-content: flex-end; margin: 0 0 12px; padding: 0; border: 0; background: transparent; }
+.inventory-page .inventory-center-tabs [role="tab"] { min-height: 40px; padding: 9px 15px; color: #9bb4c8; font-size: 14px; }
+.inventory-page .inventory-center-tabs [role="tab"][aria-selected="true"] { color: #5eead4; background: rgba(20,184,166,.12); box-shadow: inset 0 0 0 1px rgba(20,184,166,.24); }
+.inventory-page .inventory-products-toolbar,
+.inventory-page #inventory-table { border: 1px solid rgba(34,211,238,.2); border-radius: 13px; background: linear-gradient(150deg, rgba(3,38,49,.97), rgba(2,24,38,.98)); box-shadow: 0 10px 25px rgba(0,0,0,.16); color: #e2e8f0; }
+.inventory-page .inventory-products-toolbar { margin-top: 0; padding: 12px 14px; }
+.inventory-page .inventory-overview-head { display: block; }
+.inventory-page .inventory-overview-head > div:first-child { display: none; }
+.inventory-page .inventory-toolbar { grid-template-columns: minmax(220px, 1.6fr) minmax(145px, .7fr) minmax(155px, .7fr) auto auto; gap: 10px; }
+.inventory-page .inventory-search-control,
+.inventory-page #inventory-category-filter,
+.inventory-page #inventory-status-filter { height: 42px; border-color: rgba(34,211,238,.28); border-radius: 11px; background: rgba(7,31,48,.9); color: #e2e8f0; }
+.inventory-page .inventory-search-control { color: #a7c4d8; }
+.inventory-page .inventory-search-control input { color: #e2e8f0; }
+.inventory-page .inventory-search-control input::placeholder { color: #7896ad; }
+.inventory-page #inventory-category-filter option,
+.inventory-page #inventory-status-filter option { color: #e2e8f0; background: #0b1c2c; }
+.inventory-page .inventory-filter-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 42px; padding-inline: 16px; border-color: transparent; border-radius: 10px; background: rgba(5,150,105,.28); color: #7cf5d3; }
+.inventory-page .inventory-add-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 42px; padding-inline: 16px; border-radius: 10px; white-space: nowrap; }
+.inventory-page .inventory-products-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 16px 11px; }
+.inventory-page #inventory-table > .inventory-products-heading .card-title { color: #eef6ff; font-size: 14px; }
+.inventory-page .inventory-publish-toolbar { margin: 0; gap: 8px; }
+.inventory-page .inventory-publish-toolbar #publishing-selection-count { margin: 0 8px 0 0; color: #9bb5c9; }
+.inventory-page #inventory-table table { width: 100%; min-width: 1050px; border-collapse: separate; border-spacing: 0 3px; }
+.inventory-page #inventory-table thead th { padding: 10px 9px; border-top: 1px solid rgba(34,211,238,.11); border-bottom: 1px solid rgba(34,211,238,.16); background: rgba(5,24,38,.94); color: #d6e5f2; font-size: 11px; }
+.inventory-page #inventory-table thead th:first-child { padding-left: 15px; }
+.inventory-page #inventory-table tbody td { padding: 9px; border-top: 1px solid rgba(34,211,238,.09); border-bottom: 1px solid rgba(34,211,238,.09); background: rgba(3,29,45,.7); color: #e0eaf4; }
+.inventory-page #inventory-table tbody td:first-child { padding-left: 15px; border-left: 1px solid rgba(34,211,238,.09); }
+.inventory-page #inventory-table thead th:first-child,
+.inventory-page #inventory-table tbody td:first-child { width: 40px; min-width: 40px; padding-left: 8px; padding-right: 4px; }
+.inventory-page #inventory-table thead th:nth-child(2),
+.inventory-page #inventory-table tbody td:nth-child(2) { padding-left: 8px; }
+.inventory-page #inventory-table tbody td:last-child { border-right: 1px solid rgba(34,211,238,.09); }
+.inventory-page #inventory-table tbody tr td,
+.inventory-page #inventory-table tbody tr:nth-child(even) td { background: #031d2d !important; }
+.inventory-page #inventory-table tbody tr:hover td { background: rgba(13,69,78,.75) !important; }
+.inventory-page #inventory-table tbody td strong { color: #f3f8fc; }
+.inventory-page #inventory-table .text-sm.muted { color: #9ab1c4; }
+.inventory-medicine-cell { display: flex; align-items: center; gap: 10px; min-width: 190px; }
+.inventory-medicine-image { display: block; width: 40px; height: 44px; flex: 0 0 40px; object-fit: contain; padding: 3px; border: 1px solid rgba(148,163,184,.18); border-radius: 8px; background: #f8fafc; }
+.inventory-medicine-image[hidden] { display: none; }
+.inventory-page #inventory-table tbody td.inventory-expiration,
+.inventory-page #inventory-table tbody td.inventory-expiration .inventory-no-expiry { color: #fff; }
+.inventory-page #inventory-table .badge { padding: 4px 8px; border: 1px solid transparent; border-radius: 999px; font-size: 10px; }
+.inventory-page #inventory-table .badge-deployed { border-color: rgba(16,185,129,.35); background: rgba(5,150,105,.23); color: #5eead4; }
+.inventory-page #inventory-table .badge-draft { border-color: rgba(96,165,250,.28); background: rgba(37,99,235,.14); color: #bfdbfe; }
+.inventory-page #inventory-table .badge-out { border-color: rgba(244,63,94,.35); background: rgba(225,29,72,.15); color: #fda4af; }
+.inventory-page .inventory-menu > summary, .inventory-page .inventory-page-button { border-color: rgba(34,211,238,.18); background: #0b2a3e; color: #d7e8f6; }
+.inventory-page .inventory-menu > summary:hover, .inventory-page .inventory-page-button:hover:not(:disabled) { border-color: rgba(45,212,191,.5); background: #123b50; }
+.inventory-page .inventory-menu-popover { border-color: rgba(34,211,238,.2); background: #0b1d2c; }
+.inventory-page .inventory-menu-popover button { color: #dce9f4; }
+.inventory-page .inventory-menu-popover button:hover { background: rgba(34,211,238,.1); }
+.inventory-page .inventory-pagination { border-color: rgba(34,211,238,.14); color: #9ab1c4; }
+.inventory-page #inventory-table .empty-state { color: #dce9f4; }
+.inventory-page #inventory-integrity-warning:empty { display: none; }
+.inventory-page #inventory-integrity-warning:not(:empty) { margin-bottom: 10px; }
+.inventory-page #inventory-integrity-warning .alert { border-radius: 10px; }
+.pharmacy-reservations-page .content { padding: 28px 32px; }
+.pharmacy-reservations-page #page-content > .card {
+  padding: 18px; border: 1px solid rgba(34,211,238,.2); border-radius: 13px;
+  background: linear-gradient(150deg, rgba(3,38,49,.97), rgba(2,24,38,.98));
+  color: #e2e8f0; box-shadow: 0 10px 25px rgba(0,0,0,.16);
+}
+.pharmacy-reservations-page .field label { color: #d6e5f2; }
+.pharmacy-reservations-page .field select,
+.pharmacy-reservations-page .field input { border-color: rgba(34,211,238,.24); background: #071f30; color: #e2e8f0; }
+.pharmacy-reservations-page .field select option { background: #0b1c2c; color: #e2e8f0; }
+.pharmacy-reservations-page #list { max-width: 100%; overflow-x: auto; border: 1px solid rgba(34,211,238,.14); border-radius: 9px; }
+.pharmacy-reservations-page #list table { min-width: 1050px; color: #e2e8f0; }
+.pharmacy-reservations-page #list thead th { background: rgba(5,24,38,.94); color: #d6e5f2; border-color: rgba(34,211,238,.16); white-space: nowrap; }
+.pharmacy-reservations-page #list tbody td { background: #031d2d; color: #e0eaf4; border-color: rgba(34,211,238,.1); }
+.pharmacy-reservations-page #list tbody tr:hover td { background: rgba(13,69,78,.75); }
+.pharmacy-reservations-page #list tbody td strong { color: #f8fafc; }
+.pharmacy-reservations-page #list .muted { color: #9ab1c4; }
+.pharmacy-reservations-page #list .empty-state { min-height: 270px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #c8d8e6; }
+.pharmacy-reservations-page #list .empty-state h3 { color: #f1f5f9; }
+.pharmacy-reservations-page #list .alert-error { background: rgba(127,29,29,.24); color: #fecaca; border-color: rgba(248,113,113,.3); }
+.pharmacy-reservations-page #list .btn-outline { border-color: rgba(34,211,238,.26); color: #f8fafc; }
+.pharmacy-reservations-page #list .btn-outline:hover { background: rgba(34,211,238,.1); }
+.pharmacy-reservations-page #list .btn-primary { border: 1px solid rgba(20,184,166,.35); background: rgba(5,150,105,.28); color: #f8fafc; box-shadow: none; }
+.pharmacy-reservations-page #list .btn-primary:hover { background: rgba(5,150,105,.42); }
+.pharmacy-alerts-page .content { padding: 28px 32px; }
+.pharmacy-alerts-page #page-content > .grid > .card,
+.pharmacy-alerts-page #page-content > .card {
+  border: 1px solid rgba(34,211,238,.2); border-radius: 13px;
+  background: linear-gradient(150deg, rgba(3,38,49,.97), rgba(2,24,38,.98));
+  color: #e2e8f0; box-shadow: 0 10px 25px rgba(0,0,0,.16);
+}
+.pharmacy-alerts-page #page-content > .grid > .card { min-height: 112px; }
+.pharmacy-alerts-page .stat-label { color: #d6e5f2; }
+.pharmacy-alerts-page .stat-value { color: #f8fafc !important; }
+.pharmacy-alerts-page #page-content > .card > .flex .card-title { color: #f1f5f9; }
+.pharmacy-alerts-page #page-content > .card > .flex .muted { color: #9ab1c4; }
+.pharmacy-alerts-page #refresh-alerts { border-color: rgba(34,211,238,.26); color: #f8fafc; }
+.pharmacy-alerts-page #refresh-alerts:hover { background: rgba(34,211,238,.1); }
+.pharmacy-alerts-page .table-wrap { max-width: 100%; overflow-x: auto; border: 1px solid rgba(34,211,238,.14); border-radius: 9px; }
+.pharmacy-alerts-page table { min-width: 1000px; color: #e2e8f0; }
+.pharmacy-alerts-page thead th { background: rgba(5,24,38,.94); color: #d6e5f2; border-color: rgba(34,211,238,.16); white-space: nowrap; }
+.pharmacy-alerts-page tbody td { background: #031d2d; color: #e0eaf4; border-color: rgba(34,211,238,.1); }
+.pharmacy-alerts-page tbody tr:hover td { background: rgba(13,69,78,.75); }
+.pharmacy-alerts-page tbody td strong { color: #f8fafc; }
+.pharmacy-alerts-page .muted { color: #9ab1c4; }
+.pharmacy-alerts-page .empty-state { min-height: 260px; color: #c8d8e6; }
+.pharmacy-alerts-page .empty-state h3 { color: #f1f5f9; }
+.pharmacy-alerts-page .alert-error { background: rgba(127,29,29,.24); color: #fecaca; border-color: rgba(248,113,113,.3); }
+.pharmacy-alerts-page .btn-outline { border-color: rgba(34,211,238,.26); color: #f8fafc; }
+.pharmacy-alerts-page .btn-outline:hover { background: rgba(34,211,238,.1); }
+.pharmacy-alerts-page a.btn-primary { border: 1px solid rgba(20,184,166,.35); background: rgba(5,150,105,.28); color: #f8fafc; box-shadow: none; }
+.pharmacy-alerts-page a.btn-primary:hover { background: rgba(5,150,105,.42); }
+.pharmacy-suppliers-page .content { padding: 28px 32px; }
+.pharmacy-suppliers-page #page-content > .card { border: 1px solid rgba(34,211,238,.2); border-radius: 13px; background: linear-gradient(150deg, rgba(3,38,49,.97), rgba(2,24,38,.98)); color: #e2e8f0; box-shadow: 0 10px 25px rgba(0,0,0,.16); }
+.pharmacy-suppliers-page #page-content > .card .card-title { color: #f1f5f9; }
+.pharmacy-suppliers-page #page-content > .card .muted { color: #9ab1c4; }
+.pharmacy-suppliers-page #page-content > .card .empty-state { min-height: 220px; color: #c8d8e6; }
+.pharmacy-suppliers-page #page-content > .card .empty-state h3 { color: #f1f5f9; }
+.pharmacy-suppliers-page .table-wrap { max-width: 100%; overflow-x: auto; border: 1px solid rgba(34,211,238,.14); border-radius: 9px; }
+.pharmacy-suppliers-page table { min-width: 760px; color: #e2e8f0; }
+.pharmacy-suppliers-page thead th { background: rgba(5,24,38,.94); color: #d6e5f2; border-color: rgba(34,211,238,.16); white-space: nowrap; }
+.pharmacy-suppliers-page tbody td { background: #031d2d; color: #e0eaf4; border-color: rgba(34,211,238,.1); }
+.pharmacy-suppliers-page tbody tr:hover td { background: rgba(13,69,78,.75); }
+.pharmacy-suppliers-page tbody td strong,
+.pharmacy-suppliers-page #page-content > .card strong { color: #f8fafc; }
+.pharmacy-suppliers-page #page-content > .card a:not(.btn) { color: #5eead4; }
+.pharmacy-suppliers-page #page-content > .card a:not(.btn):hover { color: #99f6e4; }
+.pharmacy-suppliers-page .btn-outline { border-color: rgba(34,211,238,.26); color: #f8fafc; }
+.pharmacy-suppliers-page .btn-outline:hover { background: rgba(34,211,238,.1); }
+.pharmacy-suppliers-page .btn-primary { border: 1px solid rgba(20,184,166,.35); background: rgba(5,150,105,.28); color: #f8fafc; box-shadow: none; }
+.pharmacy-suppliers-page .btn-primary:hover { background: rgba(5,150,105,.42); }
+.pharmacy-suppliers-page .alert-error { background: rgba(127,29,29,.24); color: #fecaca; border-color: rgba(248,113,113,.3); }
+.pharmacy-analytics-page .content { padding: 24px 28px 40px; }
+.pharmacy-analytics-page #page-content { display: grid; gap: 22px; }
+.pharmacy-analytics-page .analytics-filter-card,
+.pharmacy-analytics-page .analytics-section .card {
+  min-width: 0; border: 1px solid rgba(34,211,238,.19); border-radius: 13px;
+  background: linear-gradient(150deg, rgba(3,38,49,.97), rgba(2,24,38,.98));
+  color: #e2e8f0; box-shadow: 0 9px 23px rgba(0,0,0,.15);
+}
+.pharmacy-analytics-page .analytics-filter-card { padding: 18px 20px; }
+.pharmacy-analytics-page .analytics-filter-card .card-title,
+.pharmacy-analytics-page .analytics-section .card-title { color: #f1f5f9; }
+.pharmacy-analytics-page .analytics-filter-card .muted,
+.pharmacy-analytics-page .analytics-section .muted { color: #9ab1c4; }
+.pharmacy-analytics-page .analytics-filter-card .field label { color: #d6e5f2; }
+.pharmacy-analytics-page .analytics-filter-card .field input { border-color: rgba(34,211,238,.24); background: #071f30; color: #e2e8f0; color-scheme: dark; }
+.pharmacy-analytics-page .analytics-filter-card .btn-primary { border: 1px solid rgba(20,184,166,.35); background: rgba(5,150,105,.28); color: #f8fafc; box-shadow: none; }
+.pharmacy-analytics-page .analytics-filter-card .btn-primary:hover { background: rgba(5,150,105,.42); }
+.pharmacy-analytics-page .analytics-filter-card .btn-outline,
+.pharmacy-analytics-page .analytics-section .btn-outline { border-color: rgba(34,211,238,.26); color: #f8fafc; }
+.pharmacy-analytics-page .analytics-filter-card .btn-outline:hover,
+.pharmacy-analytics-page .analytics-section .btn-outline:hover { background: rgba(34,211,238,.1); }
+.pharmacy-analytics-page .analytics-dashboard-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; }
+.pharmacy-analytics-page .analytics-section { min-width: 0; }
+.pharmacy-analytics-page .analytics-section-heading { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
+.pharmacy-analytics-page .analytics-section-marker { width: 4px; min-height: 38px; flex: 0 0 4px; border-radius: 3px; background: linear-gradient(#2dd4bf, #0891b2); box-shadow: 0 0 14px rgba(45,212,191,.24); }
+.pharmacy-analytics-page .analytics-section-heading h2 { margin: 0 0 3px; color: #f1f5f9; font-size: 18px; }
+.pharmacy-analytics-page .analytics-section-heading p { max-width: 900px; color: #8faabe; font-size: 12px; line-height: 1.5; }
+.pharmacy-analytics-page .analytics-section-content { display: grid; gap: 14px; min-width: 0; }
+.pharmacy-analytics-page .analytics-section-content > .grid { gap: 14px; }
+.pharmacy-analytics-page .analytics-section-content .analytics-metric-card { min-height: 112px; padding: 16px 18px; border-left: 3px solid rgba(45,212,191,.7); }
+.pharmacy-analytics-page .analytics-metric-card .stat-label { color: #a8c2d5; font-size: 12px; }
+.pharmacy-analytics-page .analytics-metric-card .stat-value { margin-top: 6px; color: #f8fafc; font-size: 25px; }
+.pharmacy-analytics-page .analytics-metric-card .muted { line-height: 1.45; }
+.pharmacy-analytics-page .analytics-bars { gap: 15px; }
+.pharmacy-analytics-page .analytics-bar-heading { color: #dce9f4; font-size: 12px; }
+.pharmacy-analytics-page .analytics-bar-heading strong { color: #f8fafc; white-space: nowrap; }
+.pharmacy-analytics-page .analytics-bar-track { height: 8px; background: rgba(148,163,184,.16); }
+.pharmacy-analytics-page .analytics-bar-track > span { background: linear-gradient(90deg, #0d9488, #22d3ee); }
+.pharmacy-analytics-page .analytics-demand-chart { min-width: 0; padding: 8px 2px 0; }
+.pharmacy-analytics-page .analytics-chart-legend { display: flex; gap: 16px; margin-bottom: 7px; color: #9ab1c4; font-size: 11px; }
+.pharmacy-analytics-page .analytics-chart-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.pharmacy-analytics-page .analytics-chart-legend i { display: inline-block; width: 15px; height: 3px; border-radius: 2px; background: #22d3ee; }
+.pharmacy-analytics-page .analytics-chart-legend i.reservation-line { background: #a78bfa; }
+.pharmacy-analytics-page .analytics-demand-chart svg { display: block; width: 100%; min-width: 400px; height: auto; overflow: visible; }
+.pharmacy-analytics-page .analytics-demand-chart svg line { stroke: rgba(148,163,184,.17); stroke-width: 1; }
+.pharmacy-analytics-page .analytics-demand-chart polyline { fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.pharmacy-analytics-page .analytics-demand-chart .search-series { stroke: #22d3ee; }
+.pharmacy-analytics-page .analytics-demand-chart .reservation-series { stroke: #a78bfa; }
+.pharmacy-analytics-page .analytics-chart-dates { display: flex; justify-content: space-between; gap: 10px; color: #7896ad; font-size: 10px; }
+.pharmacy-analytics-page .analytics-note-card { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 10px; padding: 13px 16px; }
+.pharmacy-analytics-page .analytics-note-value { color: #5eead4; font-size: 19px; font-weight: 800; }
+.pharmacy-analytics-page .analytics-note-card > span:nth-child(2) { color: #d6e5f2; font-size: 12px; font-weight: 650; }
+.pharmacy-analytics-page .analytics-note-card small { width: 100%; color: #8faabe; font-size: 10px; }
+.pharmacy-analytics-page .table-wrap { max-width: 100%; overflow-x: auto; border: 1px solid rgba(34,211,238,.13); border-radius: 9px; }
+.pharmacy-analytics-page table { min-width: 500px; color: #e2e8f0; }
+.pharmacy-analytics-page thead th { background: rgba(5,24,38,.94); color: #d6e5f2; border-color: rgba(34,211,238,.16); white-space: nowrap; }
+.pharmacy-analytics-page tbody td { background: #031d2d; color: #e0eaf4; border-color: rgba(34,211,238,.1); }
+.pharmacy-analytics-page tbody tr:hover td { background: rgba(13,69,78,.75); }
+.pharmacy-analytics-page tbody td strong { color: #f8fafc; }
+.pharmacy-analytics-page .empty-state { min-height: 120px; color: #c8d8e6; }
+.pharmacy-analytics-page .empty-state h3 { color: #f1f5f9; }
+.pharmacy-analytics-page .alert-error { border-color: rgba(248,113,113,.3); background: rgba(127,29,29,.24); color: #fecaca; }
+.pharmacy-sales-page .content { padding: 24px 28px 40px; }
+.pharmacy-sales-page .sales-history-workspace { display: grid; gap: 18px; }
+.pharmacy-sales-page .sales-period-card,
+.pharmacy-sales-page .sales-history-panel { min-width: 0; border: 1px solid rgba(34,211,238,.19); border-radius: 13px; background: linear-gradient(150deg, rgba(3,38,49,.97), rgba(2,24,38,.98)); color: #e2e8f0; box-shadow: 0 9px 23px rgba(0,0,0,.15); }
+.pharmacy-sales-page .sales-period-card { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 18px 20px; }
+.pharmacy-sales-page .sales-period-copy { display: flex; align-items: center; gap: 12px; }
+.pharmacy-sales-page .sales-period-mark { width: 4px; height: 42px; border-radius: 4px; background: linear-gradient(#2dd4bf, #0891b2); box-shadow: 0 0 14px rgba(45,212,191,.24); }
+.pharmacy-sales-page .sales-period-title { color: #f1f5f9; font-size: 16px; font-weight: 750; }
+.pharmacy-sales-page .sales-period-copy p { margin-top: 3px; color: #8faabe; font-size: 12px; }
+.pharmacy-sales-page .sales-period-card .field { min-width: 200px; margin: 0; }
+.pharmacy-sales-page .sales-period-card .field label { color: #d6e5f2; }
+.pharmacy-sales-page .sales-period-card select { border-color: rgba(34,211,238,.24); background: #071f30; color: #e2e8f0; }
+.pharmacy-sales-page .sales-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.pharmacy-sales-page .sales-summary-card { display: flex; min-height: 122px; align-items: center; gap: 15px; padding: 18px 20px; border: 1px solid rgba(34,211,238,.2); border-left: 3px solid #14b8a6; border-radius: 12px; background: linear-gradient(145deg, rgba(8,52,53,.92), rgba(5,25,39,.96)); color: #e2e8f0; box-shadow: 0 8px 20px rgba(0,0,0,.15); }
+.pharmacy-sales-page .sales-summary-card[data-tone="green"] { border-left-color: #10b981; }
+.pharmacy-sales-page .sales-summary-icon { display: grid; width: 48px; height: 48px; flex: 0 0 48px; place-items: center; border-radius: 13px; background: rgba(16,185,129,.18); color: #5eead4; box-shadow: inset 0 0 0 1px rgba(45,212,191,.16); }
+.pharmacy-sales-page .sales-summary-card .stat-label { color: #a8c2d5; font-size: 12px; }
+.pharmacy-sales-page .sales-summary-card .stat-value { margin-top: 4px; color: #f8fafc; font-size: 28px; }
+.pharmacy-sales-page .sales-summary-note { margin-top: 3px; color: #8faabe; font-size: 11px; }
+.pharmacy-sales-page .sales-history-panel { padding: 18px 20px 20px; }
+.pharmacy-sales-page .sales-panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.pharmacy-sales-page .sales-panel-heading h2 { margin: 0 0 3px; color: #f1f5f9; font-size: 16px; }
+.pharmacy-sales-page .sales-panel-heading p { color: #8faabe; font-size: 12px; }
+.pharmacy-sales-page .sales-panel-icon { display: grid; width: 38px; height: 38px; flex: 0 0 38px; place-items: center; border: 1px solid rgba(34,211,238,.17); border-radius: 10px; background: rgba(8,47,62,.8); color: #5eead4; }
+.pharmacy-sales-page .table-wrap { max-width: 100%; overflow-x: auto; border: 1px solid rgba(34,211,238,.13); border-radius: 9px; }
+.pharmacy-sales-page table { min-width: 700px; color: #e2e8f0; }
+.pharmacy-sales-page thead th { background: rgba(5,24,38,.94); color: #d6e5f2; border-color: rgba(34,211,238,.16); white-space: nowrap; }
+.pharmacy-sales-page tbody td { background: #031d2d; color: #e0eaf4; border-color: rgba(34,211,238,.1); }
+.pharmacy-sales-page tbody tr:hover td { background: rgba(13,69,78,.75); }
+.pharmacy-sales-page tbody td strong { color: #f8fafc; }
+.pharmacy-sales-page .muted { color: #9ab1c4; }
+.pharmacy-sales-page .sales-product-track { display: block; width: min(200px, 100%); height: 5px; margin-top: 7px; overflow: hidden; border-radius: 99px; background: rgba(148,163,184,.14); }
+.pharmacy-sales-page .sales-product-track > span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #0d9488, #22d3ee); }
+.pharmacy-sales-page .empty-state { min-height: 180px; color: #c8d8e6; }
+.pharmacy-sales-page .empty-state h3 { color: #f1f5f9; }
+.pharmacy-sales-page .sales-history-panel > .text-sm.muted { padding: 18px 4px; color: #9ab1c4; }
+.pharmacy-staff-profile-page .content { padding: 22px 24px 38px; }
+.pharmacy-staff-profile-page #page-content { display: grid; gap: 12px; min-width: 0; }
+.pharmacy-staff-profile-page .pharmacy-profile-hero,
+.pharmacy-staff-profile-page .pharmacy-profile-content-grid > .card { border: 1px solid rgba(34,211,238,.2); border-radius: 13px; background: linear-gradient(150deg, rgba(3,38,49,.97), rgba(2,24,38,.98)); color: #e2e8f0; box-shadow: 0 10px 25px rgba(0,0,0,.16); }
+.pharmacy-staff-profile-page .pharmacy-profile-hero { overflow: hidden; }
+.pharmacy-staff-profile-page .pharmacy-cover-preview { position: relative; height: 225px; background: linear-gradient(115deg, #073b37, #052b38 55%, #061c2c); }
+.pharmacy-staff-profile-page .pharmacy-cover-preview::after { position: absolute; inset: 0; content: ''; background: linear-gradient(90deg, rgba(2,28,32,.32), rgba(2,22,34,.05) 65%, rgba(2,22,34,.28)); pointer-events: none; }
+.pharmacy-staff-profile-page .pharmacy-cover-fallback { background: radial-gradient(circle at 20% 15%, rgba(45,212,191,.2), transparent 40%), linear-gradient(115deg, #073b37, #052b38 55%, #061c2c); }
+.pharmacy-staff-profile-page .pharmacy-cover-fallback strong { color: #e6fffb; text-shadow: 0 2px 16px rgba(0,0,0,.45); }
+.pharmacy-staff-profile-page .pharmacy-public-identity { display: flex; align-items: center; gap: 16px; min-height: 140px; padding: 18px 22px; margin-top: -140px; z-index: 1; background: linear-gradient(90deg, rgba(2,28,32,.96), rgba(2,25,36,.8) 62%, rgba(2,25,36,.35)); }
+.pharmacy-staff-profile-page .pharmacy-avatar-preview { width: 104px; height: 104px; flex-basis: 104px; border: 3px solid rgba(94,234,212,.8); background: #062631; box-shadow: 0 8px 24px rgba(0,0,0,.35); }
+.pharmacy-staff-profile-page .pharmacy-avatar-name { color: #a7f3d0; }
+.pharmacy-staff-profile-page .pharmacy-public-name { min-width: 0; }
+.pharmacy-staff-profile-page .pharmacy-public-name h2 { color: #f8fafc; font-size: clamp(21px, 2.2vw, 30px); }
+.pharmacy-staff-profile-page .pharmacy-rating-summary { margin-left: auto; align-items: flex-start; }
+.pharmacy-staff-profile-page .pharmacy-rating-summary strong { color: #5eead4; font-size: 22px; }
+.pharmacy-staff-profile-page .pharmacy-rating-summary span { color: #b4c9d7; font-size: 11px; }
+.pharmacy-staff-profile-page .pharmacy-profile-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.pharmacy-staff-profile-page .pharmacy-profile-actions .btn-outline { border-color: rgba(45,212,191,.45); background: rgba(2,29,41,.75); color: #e6fffb; }
+.pharmacy-staff-profile-page .pharmacy-profile-actions .btn-primary { border: 1px solid rgba(20,184,166,.35); background: rgba(5,150,105,.36); color: #f8fafc; box-shadow: none; }
+.pharmacy-staff-profile-page .pharmacy-public-details { padding: 16px 22px 20px; border-top: 1px solid rgba(34,211,238,.14); }
+.pharmacy-staff-profile-page .pharmacy-public-details > p { color: #b7cbd8; }
+.pharmacy-staff-profile-page .pharmacy-public-details .grid > div { padding: 10px 12px; border: 1px solid rgba(34,211,238,.12); border-radius: 9px; background: rgba(3,29,45,.6); color: #dce9f4; }
+.pharmacy-staff-profile-page .pharmacy-public-details .grid strong { color: #8faabe; }
+.pharmacy-staff-profile-page .pharmacy-public-details a { color: #5eead4; }
+.pharmacy-staff-profile-page .pharmacy-stars,
+.pharmacy-staff-profile-page .review-stars { color: #34d399; }
+.pharmacy-staff-profile-page .pharmacy-profile-tabs { position: sticky; top: 0; z-index: 5; display: flex; gap: 6px; overflow-x: auto; padding: 5px; border: 1px solid rgba(34,211,238,.18); border-radius: 11px; background: rgba(2,24,38,.96); backdrop-filter: blur(12px); }
+.pharmacy-staff-profile-page .pharmacy-profile-tabs a { display: inline-flex; align-items: center; min-height: 36px; padding: 8px 14px; border-radius: 7px; color: #a9bfd0; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.pharmacy-staff-profile-page .pharmacy-profile-tabs a:hover,
+.pharmacy-staff-profile-page .pharmacy-profile-tabs a.active { background: rgba(20,184,166,.18); color: #5eead4; }
+.pharmacy-staff-profile-page .pharmacy-profile-content-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(300px, .8fr); gap: 14px; align-items: start; }
+.pharmacy-staff-profile-page .pharmacy-profile-content-grid > .card { min-width: 0; padding: 18px; }
+.pharmacy-staff-profile-page .pharmacy-profile-reviews { grid-column: 1 / -1; }
+.pharmacy-staff-profile-page .pharmacy-profile-content-grid .card-title { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; color: #f1f5f9; font-size: 16px; }
+.pharmacy-staff-profile-page .pharmacy-review-count { display: inline-grid; min-width: 24px; height: 24px; place-items: center; padding: 0 7px; border: 1px solid rgba(45,212,191,.2); border-radius: 999px; background: rgba(20,184,166,.13); color: #5eead4; font-size: 10px; }
+.pharmacy-staff-profile-page .pharmacy-rating-breakdown { border-color: rgba(34,211,238,.14); }
+.pharmacy-staff-profile-page .pharmacy-rating-breakdown-heading strong { color: #5eead4; }
+.pharmacy-staff-profile-page .pharmacy-rating-breakdown-heading span,
+.pharmacy-staff-profile-page .rating-distribution-row { color: #9ab1c4; }
+.pharmacy-staff-profile-page .rating-distribution-track { background: rgba(148,163,184,.17); }
+.pharmacy-staff-profile-page .rating-distribution-track span { background: linear-gradient(90deg, #10b981, #22d3ee); }
+.pharmacy-staff-profile-page .review-toolbar { flex-wrap: wrap; }
+.pharmacy-staff-profile-page .review-toolbar label { color: #a9bfd0; }
+.pharmacy-staff-profile-page .review-toolbar select,
+.pharmacy-staff-profile-page .review-comment-field textarea { border-color: rgba(34,211,238,.24); background: #071f30; color: #e2e8f0; }
+.pharmacy-staff-profile-page .review-comment-field textarea::placeholder { color: #7896ad; }
+.pharmacy-staff-profile-page .rating-form > label,
+.pharmacy-staff-profile-page .rating-prompt { color: #dce9f4; }
+.pharmacy-staff-profile-page .rating-selected-label,
+.pharmacy-staff-profile-page .rating-description { color: #5eead4; }
+.pharmacy-staff-profile-page .rating-star { color: #496478; }
+.pharmacy-staff-profile-page .rating-star.selected { color: #34d399; }
+.pharmacy-staff-profile-page .your-review-summary { border-color: rgba(34,211,238,.18); background: rgba(3,29,45,.75); color: #e2e8f0; }
+.pharmacy-staff-profile-page .pharmacy-review-row { border-color: rgba(34,211,238,.13); color: #e2e8f0; }
+.pharmacy-staff-profile-page .review-content > .muted { color: #8faabe; }
+.pharmacy-staff-profile-page .pharmacy-review-row p { color: #c5d5e0; }
+.pharmacy-staff-profile-page .review-author-avatar { border: 1px solid rgba(45,212,191,.24); background: #0b3942; color: #a7f3d0; }
+.pharmacy-staff-profile-page .pharmacy-profile-location .map-placeholder { height: 260px; border-color: rgba(34,211,238,.17); }
+.pharmacy-staff-profile-page .pharmacy-profile-address { margin-top: 10px; color: #a9bfd0; }
+.pharmacy-staff-profile-page .pharmacy-profile-products .field label { color: #c8d8e6; }
+.pharmacy-staff-profile-page .pharmacy-profile-products .field input { border-color: rgba(34,211,238,.24); background: #071f30; color: #e2e8f0; }
+.pharmacy-staff-profile-page .pharmacy-profile-products .field input::placeholder { color: #7896ad; }
+.pharmacy-staff-profile-page .pharmacy-profile-products .table-wrap { max-width: 100%; overflow-x: auto; border: 1px solid rgba(34,211,238,.13); border-radius: 9px; }
+.pharmacy-staff-profile-page .pharmacy-profile-products table { min-width: 620px; color: #e2e8f0; }
+.pharmacy-staff-profile-page .pharmacy-profile-products thead th { background: rgba(5,24,38,.94); color: #d6e5f2; border-color: rgba(34,211,238,.16); }
+.pharmacy-staff-profile-page .pharmacy-profile-products tbody td { background: #031d2d; color: #e0eaf4; border-color: rgba(34,211,238,.1); }
+.pharmacy-staff-profile-page .pharmacy-profile-products tbody tr:hover td { background: rgba(13,69,78,.75); }
+.pharmacy-staff-profile-page .pharmacy-profile-products tbody td strong { color: #f8fafc; }
+.pharmacy-staff-profile-page .pharmacy-profile-products .muted { color: #9ab1c4; }
+.pharmacy-staff-profile-page .pharmacy-profile-products .btn-outline { border-color: rgba(34,211,238,.26); color: #f8fafc; }
+.pharmacy-staff-profile-page .pharmacy-profile-products .btn-primary { border: 1px solid rgba(20,184,166,.35); background: rgba(5,150,105,.28); color: #f8fafc; box-shadow: none; }
+@media (max-width: 1000px) {
+  .pharmacy-staff-profile-page .pharmacy-profile-content-grid { grid-template-columns: minmax(0, 1fr); }
+  .pharmacy-staff-profile-page .pharmacy-profile-reviews { grid-column: auto; }
+}
+@media (max-width: 760px) {
+  .pharmacy-staff-profile-page .content { padding: 14px 12px 28px; }
+  .pharmacy-staff-profile-page .pharmacy-cover-preview { height: 190px; }
+  .pharmacy-staff-profile-page .pharmacy-public-identity { align-items: flex-start; flex-wrap: wrap; gap: 10px; min-height: 0; margin-top: -78px; padding: 10px 14px 16px; background: linear-gradient(90deg, rgba(2,28,32,.96), rgba(2,25,36,.82)); }
+  .pharmacy-staff-profile-page .pharmacy-avatar-preview { width: 76px; height: 76px; flex-basis: 76px; }
+  .pharmacy-staff-profile-page .pharmacy-public-name { align-self: center; flex: 1; }
+  .pharmacy-staff-profile-page .pharmacy-public-name h2 { font-size: 20px; }
+  .pharmacy-staff-profile-page .pharmacy-rating-summary { width: calc(50% - 8px); margin-left: 0; }
+  .pharmacy-staff-profile-page .pharmacy-profile-actions { width: calc(50% - 8px); justify-content: flex-end; }
+  .pharmacy-staff-profile-page .pharmacy-public-details { padding: 14px; }
+  .pharmacy-staff-profile-page .pharmacy-profile-content-grid > .card { padding: 14px; }
+  .pharmacy-staff-profile-page .pharmacy-rating-breakdown { grid-template-columns: 1fr; gap: 12px; }
+  .pharmacy-staff-profile-page .review-toolbar { justify-content: flex-start; }
+}
+.pharmacy-notifications-page .content { padding: 24px 28px 40px; }
+.pharmacy-notifications-page #page-content > .flex { display: flex; min-height: 72px; align-items: center; gap: 16px; margin-top: 0; padding: 14px 16px; border: 1px solid rgba(34,211,238,.18); border-radius: 12px; background: linear-gradient(150deg, rgba(3,38,49,.97), rgba(2,24,38,.98)); }
+.pharmacy-notifications-page .notification-filters { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.pharmacy-notifications-page .notification-filters label { color: #9ab1c4; }
+.pharmacy-notifications-page .notification-filters select { min-width: 150px; min-height: 42px; padding: 8px 12px; border: 1px solid rgba(34,211,238,.24); border-radius: 9px; background: #071f30; color: #e2e8f0; }
+.pharmacy-notifications-page .notification-filters select option { background: #0b1c2c; color: #e2e8f0; }
+.pharmacy-notifications-page #mark-all { border-color: rgba(34,211,238,.26); color: #f8fafc; }
+.pharmacy-notifications-page #mark-all:hover { background: rgba(34,211,238,.1); }
+.pharmacy-notifications-page #list { display: grid; gap: 11px; margin-top: 14px; }
+.pharmacy-notifications-page .notification-card { margin: 0 !important; padding: 17px 18px; border: 1px solid rgba(34,211,238,.17); border-radius: 12px; background: linear-gradient(150deg, rgba(3,38,49,.97), rgba(2,24,38,.98)); color: #e2e8f0; box-shadow: 0 8px 20px rgba(0,0,0,.14); }
+.pharmacy-notifications-page .notification-card.notification-unread { border-left: 4px solid #14b8a6; background: linear-gradient(100deg, rgba(7,55,59,.96), rgba(2,24,38,.98)); }
+.pharmacy-notifications-page .notification-card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.pharmacy-notifications-page .notification-title { color: #f1f5f9; font-size: 14px; font-weight: 750; }
+.pharmacy-notifications-page .notification-date { color: #8faabe; white-space: nowrap; }
+.pharmacy-notifications-page .notification-message { color: #c7d8e5; line-height: 1.55; }
+.pharmacy-notifications-page .notification-card .read-btn { border-color: rgba(34,211,238,.26); color: #f8fafc; }
+.pharmacy-notifications-page .notification-card .read-btn:hover { background: rgba(34,211,238,.1); }
+.pharmacy-notifications-page .empty-state { min-height: 300px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px dashed rgba(34,211,238,.2); border-radius: 14px; background: rgba(3,29,45,.45); color: #9ab1c4; }
+.pharmacy-notifications-page .empty-state .icon { color: #5eead4; }
+.pharmacy-notifications-page .empty-state h3 { color: #f1f5f9; }
+.pharmacy-notifications-page .alert-error { background: rgba(127,29,29,.24); color: #fecaca; border-color: rgba(248,113,113,.3); }
+@media (max-width: 760px) {
+  .pharmacy-sales-page .content { padding: 16px 12px 28px; }
+  .pharmacy-sales-page .sales-period-card { align-items: stretch; flex-direction: column; padding: 14px; }
+  .pharmacy-sales-page .sales-period-card .field { min-width: 0; }
+  .pharmacy-sales-page .sales-history-panel { padding: 14px; }
+  .pharmacy-sales-page .sales-summary-grid { grid-template-columns: 1fr; }
+  .pharmacy-sales-page table { display: table; width: max-content; }
+  .pharmacy-sales-page thead { position: static; width: auto; height: auto; margin: 0; overflow: visible; clip: auto; white-space: nowrap; }
+  .pharmacy-sales-page tbody { display: table-row-group; }
+  .pharmacy-sales-page tbody tr { display: table-row; padding: 0; border: 0; border-radius: 0; }
+  .pharmacy-sales-page tbody td { display: table-cell; padding: 9px 10px; border-bottom: 1px solid rgba(34,211,238,.1); }
+  .pharmacy-sales-page tbody td::before { content: none; }
+  .pharmacy-notifications-page .content { padding: 16px 12px 28px; }
+  .pharmacy-notifications-page #page-content > .flex { align-items: stretch; flex-direction: column; }
+  .pharmacy-notifications-page .notification-filters select { flex: 1 1 140px; }
+  .pharmacy-notifications-page #mark-all { align-self: flex-start; }
+  .pharmacy-notifications-page .notification-card-heading { flex-direction: column; gap: 5px; }
+  .pharmacy-notifications-page .notification-date { white-space: normal; }
+}
+@media (max-width: 760px) {
+  .pharmacy-analytics-page .content { padding: 16px 12px 28px; }
+  .pharmacy-analytics-page #page-content { gap: 18px; }
+  .pharmacy-analytics-page .analytics-filter-card { padding: 14px; }
+  .pharmacy-analytics-page .analytics-filter-card > .flex { align-items: flex-start; flex-direction: column; }
+  .pharmacy-analytics-page .analytics-filter-card form { width: 100%; }
+  .pharmacy-analytics-page .analytics-filter-card form .field { flex: 1 1 140px; }
+  .pharmacy-analytics-page .analytics-section-heading h2 { font-size: 16px; }
+  .pharmacy-analytics-page table { display: table; width: max-content; }
+  .pharmacy-analytics-page thead { position: static; width: auto; height: auto; margin: 0; overflow: visible; clip: auto; white-space: nowrap; }
+  .pharmacy-analytics-page tbody { display: table-row-group; }
+  .pharmacy-analytics-page tbody tr { display: table-row; padding: 0; border: 0; border-radius: 0; }
+  .pharmacy-analytics-page tbody td { display: table-cell; padding: 9px 10px; border-bottom: 1px solid rgba(34,211,238,.1); }
+  .pharmacy-analytics-page tbody td::before { content: none; }
+}
+.inventory-page #add-form {
+  border: 1px solid rgba(34,211,238,.2); border-radius: 13px;
+  background: linear-gradient(150deg, rgba(3,38,49,.97), rgba(2,24,38,.98));
+  color: #e2e8f0; box-shadow: 0 10px 25px rgba(0,0,0,.16);
+}
+.inventory-page #add-form .card-title { color: #f1f5f9; }
+.inventory-page #add-form .field label { color: #d6e5f2; }
+.inventory-page #add-form .field input,
+.inventory-page #add-form .field select { border-color: rgba(34,211,238,.24); background: #071f30; color: #e2e8f0; }
+.inventory-page #add-form .field input::placeholder { color: #7896ad; }
+.inventory-page #add-form .field select option { background: #0b1c2c; color: #e2e8f0; }
+.inventory-page #add-form .muted,
+.inventory-page #add-form p { color: #9ab1c4; }
+.inventory-page #add-form .btn-outline { border-color: rgba(34,211,238,.26); background: transparent; color: #f8fafc; }
+.inventory-page #add-form .btn-outline:hover { background: rgba(34,211,238,.1); }
+.inventory-page #add-form .btn-primary { border: 1px solid rgba(20,184,166,.35); background: rgba(5,150,105,.28); color: #f8fafc; box-shadow: none; }
+.inventory-page #add-form .btn-primary:hover { background: rgba(5,150,105,.42); }
+.inventory-page #inventory-panel-movements .card {
+  border: 1px solid rgba(34,211,238,.2); border-radius: 13px;
+  background: linear-gradient(150deg, rgba(3,38,49,.97), rgba(2,24,38,.98));
+  color: #e2e8f0; box-shadow: 0 10px 25px rgba(0,0,0,.16);
+}
+.inventory-page #inventory-panel-movements .card-title { color: #f1f5f9; }
+.inventory-page #inventory-panel-movements .empty-state,
+.inventory-page #inventory-panel-movements .empty-state h3 { color: #e2e8f0; }
+.inventory-page #inventory-panel-movements .table-wrap { border: 1px solid rgba(34,211,238,.14); border-radius: 9px; }
+.inventory-page #inventory-panel-movements table { color: #e2e8f0; }
+.inventory-page #inventory-panel-movements thead th { background: rgba(5,24,38,.94); color: #d6e5f2; border-color: rgba(34,211,238,.16); }
+.inventory-page #inventory-panel-movements tbody td { background: #031d2d; color: #e0eaf4; border-color: rgba(34,211,238,.1); }
+.inventory-page #inventory-panel-movements tbody tr:hover td { background: rgba(13,69,78,.75); }
+.inventory-page #inventory-panel-movements .muted { color: #9ab1c4; }
+.inventory-page #inventory-panel-movements .alert-error { background: rgba(127,29,29,.24); color: #fecaca; border-color: rgba(248,113,113,.3); }
+.inventory-page #inventory-panel-movements .inventory-movement-actions .btn-outline { border-color: rgba(34,211,238,.26); color: #dce9f4; }
+.inventory-page #inventory-panel-movements .inventory-movement-actions .btn-outline:hover { background: rgba(34,211,238,.1); }
+.inventory-page #inventory-panel-movements .inventory-movement-actions #stock-in-btn { border: 1px solid rgba(34,211,238,.26); background: transparent; color: #f8fafc; box-shadow: none; }
+.inventory-page #inventory-panel-movements .inventory-movement-actions #stock-in-btn:hover { background: rgba(34,211,238,.1); color: #d1fae5; }
+.inventory-page #inventory-panel-batches .card,
+.inventory-page #inventory-panel-expiration .card {
+  border: 1px solid rgba(34,211,238,.2); border-radius: 13px;
+  background: linear-gradient(150deg, rgba(3,38,49,.97), rgba(2,24,38,.98));
+  color: #e2e8f0; box-shadow: 0 10px 25px rgba(0,0,0,.16);
+}
+.inventory-page #inventory-panel-batches .card-title,
+.inventory-page #inventory-panel-expiration .card-title { color: #f1f5f9; }
+.inventory-page #inventory-panel-batches .table-wrap,
+.inventory-page #inventory-panel-expiration .table-wrap { max-width: 100%; overflow-x: auto; border: 1px solid rgba(34,211,238,.14); border-radius: 9px; }
+.inventory-page #inventory-panel-batches table,
+.inventory-page #inventory-panel-expiration table { color: #e2e8f0; }
+.inventory-page #inventory-panel-batches thead th,
+.inventory-page #inventory-panel-expiration thead th { background: rgba(5,24,38,.94); color: #d6e5f2; border-color: rgba(34,211,238,.16); }
+.inventory-page #inventory-panel-batches tbody td,
+.inventory-page #inventory-panel-expiration tbody td { background: #031d2d; color: #e0eaf4; border-color: rgba(34,211,238,.1); }
+.inventory-page #inventory-panel-batches tbody tr:hover td,
+.inventory-page #inventory-panel-expiration tbody tr:hover td { background: rgba(13,69,78,.75); }
+.inventory-page #inventory-panel-batches .muted,
+.inventory-page #inventory-panel-expiration .muted { color: #9ab1c4; }
+.inventory-page #inventory-panel-batches .empty-state,
+.inventory-page #inventory-panel-expiration .empty-state { color: #dce9f4; }
+.inventory-page #inventory-panel-publishing .card,
+.inventory-page #inventory-panel-publishing .folder-card {
+  border: 1px solid rgba(34,211,238,.2); border-radius: 12px;
+  background: linear-gradient(150deg, rgba(3,38,49,.97), rgba(2,24,38,.98));
+  color: #e2e8f0; box-shadow: 0 8px 20px rgba(0,0,0,.15);
+}
+.inventory-page #inventory-panel-publishing .card-title,
+.inventory-page #inventory-panel-publishing .stat-label,
+.inventory-page #inventory-panel-publishing .folder-name { color: #f1f5f9; }
+.inventory-page #inventory-panel-publishing .muted,
+.inventory-page #inventory-panel-publishing .folder-meta,
+.inventory-page #inventory-panel-publishing .stat-label + .stat-value + .text-sm { color: #9ab1c4; }
+.inventory-page #inventory-panel-publishing .stat-value { color: #f8fafc; }
+.inventory-page #inventory-panel-publishing .inventory-publishing-actions p { color: #9ab1c4; }
+.inventory-page #inventory-panel-publishing .inventory-publishing-actions .btn-outline { border-color: rgba(34,211,238,.26); color: #f8fafc; }
+.inventory-page #inventory-panel-publishing .inventory-publishing-actions .btn-outline:hover { background: rgba(34,211,238,.1); }
+.inventory-page #inventory-panel-publishing .inventory-publishing-layout { grid-template-columns: minmax(280px, .9fr) minmax(0, 1.4fr); gap: 18px; }
+.inventory-page #inventory-panel-publishing .inventory-folder-column { min-width: 0; }
+.inventory-page #inventory-panel-publishing .folder-head { color: #e2e8f0; }
+.inventory-page #inventory-panel-publishing .folder-body { border-top-color: rgba(34,211,238,.14); background: rgba(2,24,38,.7); color: #dce9f4; }
+.inventory-page #inventory-panel-publishing .folder-body .muted { color: #9ab1c4; }
+.inventory-page #inventory-panel-publishing .folder-body table { color: #e2e8f0; }
+.inventory-page #inventory-panel-publishing .folder-body thead th { background: rgba(5,24,38,.94); color: #d6e5f2; border-color: rgba(34,211,238,.16); }
+.inventory-page #inventory-panel-publishing .folder-body tbody td { background: #031d2d; color: #e0eaf4; border-color: rgba(34,211,238,.1); }
+.inventory-page #inventory-panel-publishing .folder-body tbody tr:hover td { background: rgba(13,69,78,.75); }
+.inventory-page #inventory-panel-publishing .folder-icon { background: rgba(16,185,129,.15); color: #5eead4; box-shadow: inset 0 0 0 1px rgba(34,211,238,.14); }
+.inventory-page #inventory-panel-publishing .folder-chevron { color: #9ab1c4; }
+.inventory-page #inventory-panel-publishing .inventory-menu > summary { border-color: rgba(34,211,238,.18); background: #0b2a3e; color: #d7e8f6; }
+.inventory-page #inventory-panel-publishing .inventory-menu-popover { border-color: rgba(34,211,238,.2); background: #0b1d2c; }
+.inventory-page #inventory-panel-publishing .inventory-menu-popover button { color: #dce9f4; }
+.inventory-page #inventory-panel-publishing .inventory-menu-popover button:hover { background: rgba(34,211,238,.1); }
+.inventory-page #inventory-panel-publishing .field label { color: #d6e5f2; }
+.inventory-page #inventory-panel-publishing .field input,
+.inventory-page #inventory-panel-publishing .field select { border-color: rgba(34,211,238,.24); background: #071f30; color: #e2e8f0; }
+.inventory-page #inventory-panel-publishing .field input::placeholder { color: #7896ad; }
+.inventory-page #inventory-panel-publishing .field select option { background: #0b1c2c; color: #e2e8f0; }
+.inventory-page #inventory-panel-publishing #deploy-history { max-height: 470px; overflow: auto; }
+.inventory-page #inventory-panel-publishing .deploy-history-item { border-bottom-color: rgba(34,211,238,.13); color: #e2e8f0; }
+.inventory-page #inventory-panel-publishing .deploy-history-item .muted { color: #9ab1c4; }
+.inventory-page #inventory-panel-publishing .empty-state { color: #dce9f4; }
+
 @media (max-width: 1200px) {
-  .inventory-page #summary-cards { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+  .inventory-page #summary-cards { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
   .inventory-publishing-layout { grid-template-columns: 1fr; }
   .inventory-page .inventory-overview-head { grid-template-columns: 1fr; gap: 10px; }
+}
+@media (max-width: 1450px) {
+  .inventory-page #summary-cards { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+  .inventory-page .inventory-toolbar { grid-template-columns: minmax(200px, 1fr) repeat(2, minmax(135px, .7fr)) auto auto; }
+  .inventory-page #inventory-panel-publishing .inventory-publishing-layout { grid-template-columns: 1fr; }
+}
+@media (min-width: 1451px) {
+  .inventory-page .content { position: relative; }
 }
 @media (max-width: 760px) {
   .inventory-page #summary-cards { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
   .inventory-page .inventory-toolbar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .inventory-page .inventory-filter-button, .inventory-page .inventory-add-button { width: 100%; }
   .inventory-page .inventory-search-control { grid-column: 1 / -1; }
+  .inventory-page .inventory-toolbar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .inventory-page .inventory-products-heading { align-items: flex-start; flex-direction: column; }
+  .inventory-page .inventory-publish-toolbar { width: 100%; justify-content: flex-start; }
   .inventory-page .inventory-pagination { align-items: flex-start; flex-direction: column; }
   .inventory-page .inventory-page-controls { align-self: flex-end; }
   .inventory-page #inventory-table table,
@@ -1039,3 +1546,668 @@ footer.site-footer { background: var(--navy); color: #94a3b8; padding: 24px 6vw;
   .pharmacy-public-details { padding: 0 14px 16px; }
   .pharmacy-card-heading .badge { max-width: 94px; white-space: normal; }
 }
+
+/* ========================================
+   DARK PHARMACY DASHBOARD THEME
+   ======================================== */
+
+/* Apply dark theme to the pharmacy dashboard shell */
+.pharmacy-dark .main { background: #0B1220; }
+.pharmacy-dark .content {
+  background: #0B1220;
+  background-image: none;
+}
+.pharmacy-dark .topbar {
+  background: #111827;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  color: #e2e8f0;
+}
+.pharmacy-dark .topbar h1 { color: #f1f5f9; font-size: 20px; }
+.pharmacy-dark .topbar .sub { color: #64748b; }
+.pharmacy-dark .sidebar .brand-subtitle {
+  display: block;
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 1px;
+  font-weight: 400;
+}
+.pharmacy-dark .sidebar .brand-name-wrap { display: flex; flex-direction: column; }
+
+/* Dark cards */
+.dark-card {
+  background: #131e2e;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 20px;
+  color: #e2e8f0;
+}
+.dark-card h3 { color: #f1f5f9; margin: 0 0 4px; }
+.dark-card .muted, .dark-card p { color: #64748b; }
+
+/* Dashboard header – dark with decorative radial bg */
+.dash-header-dark {
+  position: relative;
+  overflow: hidden;
+  padding: 24px 28px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #0d1f35 0%, #0a2540 50%, #071e1a 100%);
+  border: 1px solid rgba(20,184,166,0.15);
+  margin-bottom: 20px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.dash-header-dark::before {
+  content: '';
+  position: absolute;
+  right: -60px;
+  top: -60px;
+  width: 280px;
+  height: 280px;
+  background: radial-gradient(circle, rgba(20,184,166,0.18) 0%, transparent 70%);
+  pointer-events: none;
+}
+.dash-header-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: #14B8A6;
+  margin-bottom: 6px;
+}
+.dash-header-name {
+  font-size: 26px;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0 0 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dash-header-verified-icon {
+  display: inline-flex;
+  width: 22px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+  background: #14B8A6;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.dash-header-address {
+  font-size: 13px;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 2px;
+}
+.dash-header-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+.dash-datetime-widget {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  color: #cbd5e1;
+  font-size: 13px;
+}
+.badge-approved-dark {
+  background: rgba(16,185,129,0.15);
+  color: #34D399;
+  border: 1px solid rgba(16,185,129,0.3);
+  padding: 5px 16px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.badge-pending-dark {
+  background: rgba(245,158,11,0.15);
+  color: #FBBF24;
+  border: 1px solid rgba(245,158,11,0.3);
+  padding: 5px 16px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.badge-danger-dark {
+  background: rgba(239,68,68,0.15);
+  color: #F87171;
+  border: 1px solid rgba(239,68,68,0.3);
+  padding: 5px 16px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* Quick action nav tiles */
+.dash-quick-nav {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 22px;
+}
+.dash-quick-tile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px;
+  background: #131e2e;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  color: #cbd5e1;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 600;
+  transition: background .15s, border-color .15s, transform .15s;
+  cursor: pointer;
+  line-height: 1.3;
+}
+.dash-quick-tile:hover {
+  background: #1a2840;
+  border-color: rgba(20,184,166,0.3);
+  color: #fff;
+  transform: translateY(-2px);
+}
+.dash-quick-tile.active-tile {
+  background: #14B8A6;
+  border-color: #14B8A6;
+  color: #06201c;
+}
+.dash-quick-tile .tile-icon {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  background: rgba(20,184,166,0.15);
+  color: #14B8A6;
+}
+.dash-quick-tile.active-tile .tile-icon {
+  background: rgba(6,32,28,0.3);
+  color: #06201c;
+}
+.dash-quick-tile .tile-text { flex: 1; min-width: 0; }
+.dash-quick-tile .tile-label { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dash-quick-tile .tile-sub { font-size: 11px; font-weight: 400; color: #64748b; margin-top: 1px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dash-quick-tile.active-tile .tile-sub { color: rgba(6,32,28,0.7); }
+
+/* Action Required section */
+.dash-action-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  gap: 12px;
+}
+.dash-action-heading-left h2 {
+  color: #f1f5f9;
+  font-size: 17px;
+  margin: 0 0 2px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dash-action-heading-sub {
+  color: #14B8A6;
+  font-size: 12px;
+}
+.dash-action-view-all {
+  color: #14B8A6;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.dash-action-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 22px;
+}
+.dash-action-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  background: #131e2e;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  color: #e2e8f0;
+  text-decoration: none;
+  transition: background .15s, transform .15s;
+  position: relative;
+  overflow: hidden;
+  min-height: 130px;
+}
+.dash-action-tile:hover { background: #1a2840; transform: translateY(-2px); }
+.dash-action-tile-top { display: flex; align-items: center; justify-content: space-between; }
+.dash-action-tile-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+.dash-action-tile-icon.tone-red { background: rgba(239,68,68,0.15); color: #F87171; }
+.dash-action-tile-icon.tone-orange { background: rgba(249,115,22,0.15); color: #FB923C; }
+.dash-action-tile-icon.tone-purple { background: rgba(139,92,246,0.15); color: #A78BFA; }
+.dash-action-tile-icon.tone-blue { background: rgba(59,130,246,0.15); color: #60A5FA; }
+.dash-action-tile-icon.tone-teal { background: rgba(20,184,166,0.15); color: #14B8A6; }
+.dash-action-tile-arrow { color: #334155; font-size: 16px; }
+.dash-action-tile-count {
+  font-size: 32px;
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1;
+}
+.dash-action-tile-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+.dash-action-tile-detail {
+  font-size: 11px;
+  color: #64748b;
+  line-height: 1.45;
+}
+
+/* Three-column main dashboard grid */
+.dash-main-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.dash-bottom-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.9fr);
+  gap: 14px;
+}
+
+/* Dark card section header */
+.dark-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.dark-section-head h3 {
+  color: #f1f5f9;
+  font-size: 14px;
+  font-weight: 700;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.dark-section-link {
+  color: #14B8A6;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+/* Low-stock list in dark card */
+.dark-medicine-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.dark-medicine-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 11px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background .12s;
+}
+.dark-medicine-item:hover { background: rgba(255,255,255,0.06); }
+.dark-medicine-thumb {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(20,184,166,0.1);
+  border-radius: 8px;
+  color: #14B8A6;
+  font-size: 15px;
+}
+.dark-medicine-info { flex: 1; min-width: 0; }
+.dark-medicine-name { font-size: 13px; font-weight: 600; color: #e2e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dark-medicine-sub { font-size: 11px; color: #64748b; margin-top: 1px; }
+.dark-badge-low { background: rgba(239,68,68,0.15); color: #F87171; border: 1px solid rgba(239,68,68,0.2); padding: 3px 9px; border-radius: 999px; font-size: 10px; font-weight: 700; white-space: nowrap; }
+.dark-badge-warning { background: rgba(245,158,11,0.15); color: #FBBF24; border: 1px solid rgba(245,158,11,0.2); padding: 3px 9px; border-radius: 999px; font-size: 10px; font-weight: 700; white-space: nowrap; }
+.dark-badge-ok { background: rgba(16,185,129,0.15); color: #34D399; border: 1px solid rgba(16,185,129,0.2); padding: 3px 9px; border-radius: 999px; font-size: 10px; font-weight: 700; white-space: nowrap; }
+.dark-medicine-arrow { color: #334155; font-size: 14px; flex-shrink: 0; }
+
+/* Inventory Overview stats row */
+.inv-overview-stats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.inv-stat-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 8px;
+  font-size: 12px;
+  color: #94a3b8;
+  white-space: nowrap;
+}
+.inv-stat-chip strong { color: #e2e8f0; }
+.inv-donut-wrap {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.inv-donut-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 12px;
+  flex: 1;
+  min-width: 110px;
+}
+.inv-legend-item { display: flex; align-items: center; gap: 7px; }
+.inv-legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.inv-legend-label { color: #94a3b8; flex: 1; }
+.inv-legend-right { display: flex; gap: 6px; align-items: center; }
+.inv-legend-pct { font-weight: 700; color: #e2e8f0; }
+.inv-legend-count { color: #64748b; font-size: 11px; }
+
+/* Sales overview */
+.sales-metric-chips {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.sales-chip {
+  padding: 11px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 8px;
+}
+.sales-chip-label { font-size: 10px; color: #64748b; margin-bottom: 4px; text-transform: uppercase; letter-spacing: .05em; }
+.sales-chip-value { font-size: 14px; font-weight: 700; color: #f1f5f9; }
+.sales-chip-sub { font-size: 10px; color: #64748b; margin-top: 2px; }
+.sales-trend-label { font-size: 12px; font-weight: 700; color: #94a3b8; margin-bottom: 8px; }
+.sales-mini-chart { width: 100%; height: 72px; overflow: hidden; }
+.sales-mini-chart svg { display: block; width: 100%; height: 100%; }
+
+/* Bottom row: demand */
+.dark-demand-list { list-style: none; margin: 0; padding: 0; }
+.dark-demand-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  font-size: 13px;
+  color: #e2e8f0;
+}
+.dark-demand-item:last-child { border-bottom: 0; }
+.dark-demand-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dark-demand-count {
+  background: rgba(20,184,166,0.15);
+  color: #14B8A6;
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* Recent reservations */
+.dark-reservations-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 100px;
+  color: #64748b;
+  font-size: 13px;
+  text-align: center;
+  padding: 20px;
+}
+.dark-res-list { list-style: none; margin: 0; padding: 0; }
+.dark-res-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  font-size: 12px;
+  color: #e2e8f0;
+}
+.dark-res-item:last-child { border-bottom: 0; }
+.dark-res-info { flex: 1; min-width: 0; }
+.dark-res-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dark-res-meta { color: #64748b; font-size: 11px; margin-top: 1px; }
+
+/* Quick actions bottom card */
+.dash-quick-actions-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.dash-quick-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  color: #e2e8f0;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 600;
+  transition: background .15s, border-color .15s;
+}
+.dash-quick-action-btn:hover {
+  background: rgba(20,184,166,0.1);
+  border-color: rgba(20,184,166,0.25);
+  color: #fff;
+}
+.dash-quick-action-icon {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+.dash-quick-action-icon.c-green { background: rgba(16,185,129,0.15); color: #34D399; }
+.dash-quick-action-icon.c-blue { background: rgba(59,130,246,0.15); color: #60A5FA; }
+.dash-quick-action-icon.c-purple { background: rgba(139,92,246,0.15); color: #A78BFA; }
+
+/* Sidebar notification badge */
+.sidebar nav a .nav-badge {
+  margin-left: auto;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #EF4444;
+  color: #fff;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+/* Correction-required alert dark */
+.dark-alert-warning {
+  padding: 14px 18px;
+  background: rgba(245,158,11,0.1);
+  border: 1px solid rgba(245,158,11,0.25);
+  border-radius: 10px;
+  color: #FBBF24;
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+.dark-alert-warning a { color: #14B8A6; }
+.dark-alert-error {
+  padding: 14px 18px;
+  background: rgba(239,68,68,0.1);
+  border: 1px solid rgba(239,68,68,0.25);
+  border-radius: 10px;
+  color: #F87171;
+  font-size: 14px;
+}
+
+/* Donut SVG chart for inventory overview */
+.inv-donut-svg { display: block; flex-shrink: 0; }
+
+/* Responsive: collapse columns on smaller screens */
+@media (max-width: 1280px) {
+  .dash-quick-nav { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .dash-action-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .dash-main-grid { grid-template-columns: 1fr 1fr; }
+  .dash-bottom-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 900px) {
+  .dash-quick-nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dash-action-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dash-main-grid { grid-template-columns: 1fr; }
+  .dash-bottom-grid { grid-template-columns: 1fr; }
+  .sales-metric-chips { grid-template-columns: 1fr 1fr 1fr; }
+}
+@media (max-width: 560px) {
+  .dash-quick-nav { grid-template-columns: 1fr 1fr; }
+  .dash-action-grid { grid-template-columns: 1fr 1fr; }
+  .sales-metric-chips { grid-template-columns: 1fr; }
+  .dash-header-dark { flex-direction: column; }
+  .dash-header-right { align-items: flex-start; }
+}
+.pharmacy-staff-profile-page .content { padding: 18px 22px 36px; }
+.pharmacy-staff-profile-page #page-content { display: block; }
+.pharmacy-profile-page { display: grid; gap: 12px; color: #e5f1f7; }
+.pharmacy-profile-hero, .pharmacy-profile-card { min-width: 0; overflow: hidden; border: 1px solid rgba(20,184,166,.27); border-radius: 13px; background: linear-gradient(145deg, rgba(3,38,49,.98), rgba(2,24,38,.99)); box-shadow: 0 10px 26px rgba(0,0,0,.16); }
+.pharmacy-profile-hero { position: relative; min-height: 250px; }
+.pharmacy-profile-cover { position: absolute; inset: 0; background: radial-gradient(ellipse at 75% 10%, rgba(16,185,129,.22), transparent 42%), linear-gradient(115deg, #064e3b, #052c3c 55%, #061c2c); }
+.pharmacy-profile-cover::after { position: absolute; inset: 0; content: ''; background: linear-gradient(90deg, rgba(2,23,32,.92), rgba(2,25,36,.72) 53%, rgba(2,25,36,.2)); }
+.pharmacy-profile-cover img { width: 100%; height: 100%; object-fit: cover; }
+.pharmacy-cover-fallback { width: 100%; height: 100%; background: radial-gradient(ellipse at 78% 20%, rgba(45,212,191,.2), transparent 27%), radial-gradient(ellipse at 88% 82%, rgba(16,185,129,.16), transparent 34%), linear-gradient(115deg, #064e3b, #052c3c 55%, #061c2c); }
+.pharmacy-profile-headline { flex: 1 1 0; }
+.pharmacy-profile-headline > h2, .pharmacy-profile-description, .pharmacy-profile-headline .pharmacy-profile-address { max-width: 760px; }
+.pharmacy-profile-actions { flex: 0 0 auto; }
+.pharmacy-profile-hero-content { position: relative; z-index: 1; display: flex; min-height: 250px; align-items: center; gap: 18px; padding: 24px; }
+.pharmacy-staff-profile-page .pharmacy-avatar-preview { display: grid; flex: 0 0 122px; width: 122px; height: 122px; place-items: center; overflow: hidden; border: 3px solid rgba(94,234,212,.72); border-radius: 50%; background: #ecfdf5; box-shadow: 0 8px 24px rgba(0,0,0,.35); }
+.pharmacy-staff-profile-page .pharmacy-avatar-preview img { width: 100%; height: 100%; object-fit: cover; }
+.pharmacy-staff-profile-page .pharmacy-avatar-name { padding: 10px; color: #065f46; font-size: 14px; font-weight: 800; text-align: center; }
+.pharmacy-profile-headline { min-width: 0; flex: 1; }
+.pharmacy-profile-headline h2 { margin: 8px 0 3px; color: #f8fafc; font-size: clamp(23px, 2.5vw, 34px); line-height: 1.15; }
+.pharmacy-status-chip { display: inline-flex; padding: 5px 10px; border: 1px solid rgba(148,163,184,.3); border-radius: 99px; background: rgba(15,23,42,.66); color: #cbd5e1; font-size: 11px; font-weight: 800; }
+.pharmacy-status-chip.is-approved { border-color: rgba(16,185,129,.48); background: rgba(5,150,105,.36); color: #a7f3d0; }
+.pharmacy-profile-description { margin: 0; color: #d3e6ee; }
+.pharmacy-profile-headline .pharmacy-profile-address { display: flex; gap: 8px; margin: 9px 0 5px; color: #c6dbe7; }
+.pharmacy-hero-rating { display: flex; align-items: center; gap: 8px; color: #bdd1de; font-size: 12px; }
+.pharmacy-hero-rating > span, .pharmacy-hero-stars, .pharmacy-review-top .review-stars { color: #34d399; letter-spacing: 1px; }
+.pharmacy-hero-rating strong { color: #f8fafc; }
+.pharmacy-profile-actions { display: flex; align-self: flex-end; gap: 8px; margin-left: auto; }
+.pharmacy-profile-actions .btn-outline, .pharmacy-profile-card .btn-outline { border-color: rgba(45,212,191,.45); background: rgba(2,29,41,.84); color: #e6fffb; }
+.pharmacy-profile-tabs { display: flex; gap: 5px; overflow-x: auto; padding: 5px; border: 1px solid rgba(20,184,166,.22); border-radius: 11px; background: rgba(2,24,38,.96); }
+.pharmacy-profile-tabs a { flex: 0 0 auto; padding: 10px 15px; border-radius: 8px; color: #a9bfd0; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.pharmacy-profile-tabs a:hover, .pharmacy-profile-tabs a.active { background: rgba(20,184,166,.2); color: #5eead4; }
+.pharmacy-profile-grid { display: grid; grid-template-columns: minmax(0,1.16fr) minmax(0,1fr) minmax(0,1.05fr); gap: 13px; align-items: start; scroll-margin-top: 20px; }
+.pharmacy-profile-column { display: grid; min-width: 0; gap: 13px; }
+.pharmacy-profile-card { padding: 17px; scroll-margin-top: 20px; }
+.pharmacy-section-heading { display: flex; align-items: flex-start; gap: 10px; padding-bottom: 13px; border-bottom: 1px solid rgba(34,211,238,.12); }
+.pharmacy-heading-icon { display: grid; flex: 0 0 29px; height: 29px; place-items: center; border-radius: 8px; background: rgba(16,185,129,.14); color: #5eead4; font-size: 20px; }
+.pharmacy-section-heading h3 { margin: 0; color: #f1f5f9; font-size: 15px; }
+.pharmacy-section-heading p { margin: 3px 0 0; color: #8faabe; font-size: 12px; }
+.pharmacy-info-list { display: grid; gap: 0; padding-top: 5px; }
+.pharmacy-info-row { display: grid; grid-template-columns: 22px minmax(105px,.9fr) minmax(0,1.5fr); align-items: start; gap: 8px; padding: 9px 0; color: #cbdbe6; font-size: 13px; }
+.pharmacy-info-icon { color: #6ee7b7; font-size: 16px; }
+.pharmacy-info-label { color: #9bb4c4; }
+.pharmacy-info-value { overflow-wrap: anywhere; color: #edf6fa; }
+.pharmacy-contact-list { display: grid; gap: 8px; padding-top: 12px; }
+.pharmacy-contact-list > div { display: grid; grid-template-columns: 22px minmax(0,1fr) auto; align-items: center; gap: 8px; color: #dce9f4; font-size: 13px; }
+.pharmacy-contact-list > div > span:first-child { color: #6ee7b7; font-size: 16px; }
+.pharmacy-contact-list a { padding: 5px 10px; border: 1px solid rgba(20,184,166,.5); border-radius: 99px; color: #99f6e4; font-size: 10px; font-weight: 700; }
+.pharmacy-hours-value { margin: 14px 0 0; color: #e2edf4; font-size: 14px; line-height: 1.65; white-space: pre-line; }
+.pharmacy-rating-summary { display: flex; align-items: center; gap: 13px; padding: 13px 0; }
+.pharmacy-rating-summary > strong { color: #f8fafc; font-size: 38px; line-height: 1; }
+.pharmacy-rating-summary > div { display: grid; gap: 3px; }
+.pharmacy-rating-summary small { color: #91aabd; }
+.pharmacy-rating-bars { display: grid; gap: 8px; }
+.pharmacy-rating-bars > div { display: grid; grid-template-columns: 40px minmax(0,1fr) 32px; align-items: center; gap: 7px; color: #b8cad6; font-size: 11px; }
+.pharmacy-rating-bars small { color: #8faabe; text-align: right; }
+.pharmacy-rating-track { height: 7px; overflow: hidden; border-radius: 99px; background: rgba(148,163,184,.16); }
+.pharmacy-rating-track i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg,#10b981,#2dd4bf); }
+.pharmacy-text-link { display: block; margin-top: 13px; color: #5eead4; font-size: 11px; font-weight: 700; text-align: right; }
+.pharmacy-license-chips { display: flex; flex-wrap: wrap; gap: 7px; margin: 13px 0; }
+.pharmacy-license-chips span { padding: 7px 9px; border: 1px solid rgba(20,184,166,.22); border-radius: 99px; background: rgba(20,184,166,.1); color: #a7f3d0; font-size: 10px; }
+.pharmacy-map-preview { height: 180px; margin-top: 12px; overflow: hidden; border: 1px solid rgba(34,211,238,.15); border-radius: 9px; background: #061f2d; color: #9ab1c4; }
+.pharmacy-map-preview > span { display: grid; height: 100%; place-items: center; }
+.pharmacy-map-address { margin: 9px 0 0; color: #a9bfd0; font-size: 12px; }
+.pharmacy-map-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; }
+.pharmacy-map-footer .pharmacy-map-address { display: flex; align-items: flex-start; gap: 7px; min-width: 0; margin: 0; }
+.pharmacy-map-footer .pharmacy-map-address span { overflow-wrap: anywhere; }
+.pharmacy-map-footer > a { flex: 0 0 auto; padding: 6px 12px; border: 1px solid rgba(20,184,166,.48); border-radius: 99px; color: #99f6e4; font-size: 11px; font-weight: 700; }
+.pharmacy-reviews-list .pharmacy-review-row { padding: 10px 0; border-bottom: 1px solid rgba(34,211,238,.12); }
+.pharmacy-review-top { display: flex; justify-content: space-between; gap: 8px; color: #e8f2f7; font-size: 13px; }
+.pharmacy-review-row > small { color: #8faabe; }
+.pharmacy-review-row p { margin: 7px 0 0; color: #c1d3df; font-size: 13px; }
+.pharmacy-empty-reviews { padding: 24px 0 8px; color: #94aabd; font-size: 12px; text-align: center; }
+.pharmacy-profile-editor { margin-top: 2px; border: 1px solid rgba(34,211,238,.19); border-radius: 12px; background: rgba(2,24,38,.78); }
+.pharmacy-profile-editor > summary { padding: 15px 18px; color: #e8f7fb; font-weight: 700; cursor: pointer; }
+.pharmacy-profile-editor[open] > summary { border-bottom: 1px solid rgba(34,211,238,.14); }
+.pharmacy-profile-editor > .pharmacy-edit-section { margin: 14px; padding: 18px; border: 1px solid rgba(34,211,238,.17); border-radius: 10px; background: linear-gradient(150deg,rgba(3,38,49,.97),rgba(2,24,38,.98)); color: #e2e8f0; }
+.pharmacy-profile-editor .card-title { color: #f1f5f9; }
+.pharmacy-profile-editor .field label { color: #c8d8e6; }
+.pharmacy-profile-editor .field input, .pharmacy-profile-editor .field textarea { border-color: rgba(34,211,238,.24); background: #071f30; color: #e2e8f0; }
+.pharmacy-profile-editor .field input[type="file"] { color: #e2e8f0; }
+.pharmacy-profile-editor .field input[type="file"]::file-selector-button { margin-right: 9px; padding: 5px 10px; border: 1px solid rgba(45,212,191,.36); border-radius: 5px; background: #0b3942; color: #e6fffb; cursor: pointer; }
+.pharmacy-profile-editor .field input[type="file"]::file-selector-button:hover { background: #10505a; }
+.pharmacy-profile-editor .btn-outline:disabled, .pharmacy-profile-editor .btn-outline[aria-disabled="true"] { border-color: rgba(148,163,184,.25); background: rgba(15,23,42,.5); color: #8faabe; opacity: 1; }
+.pharmacy-profile-editor .btn-outline:not(:disabled):not([aria-disabled="true"]) { border-color: rgba(45,212,191,.4); background: rgba(2,29,41,.84); color: #e6fffb; }
+.pharmacy-profile-editor .field input::placeholder, .pharmacy-profile-editor .field textarea::placeholder { color: #7896ad; }
+.pharmacy-profile-editor .muted { color: #9ab1c4; }
+@media (max-width: 1150px) { .pharmacy-profile-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } .pharmacy-profile-grid > .pharmacy-profile-column:last-child { grid-column: 1 / -1; grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@media (max-width: 760px) { .pharmacy-staff-profile-page .content { padding: 14px 12px 28px; } .pharmacy-profile-hero, .pharmacy-profile-hero-content { min-height: 0; } .pharmacy-profile-hero-content { align-items: flex-start; flex-wrap: wrap; padding: 18px 15px; } .pharmacy-profile-cover { height: 100%; } .pharmacy-staff-profile-page .pharmacy-avatar-preview { flex-basis: 76px; width: 76px; height: 76px; } .pharmacy-profile-headline { flex: 1 1 calc(100% - 100px); } .pharmacy-profile-actions { width: 100%; margin-left: 94px; } .pharmacy-profile-grid, .pharmacy-profile-grid > .pharmacy-profile-column:last-child { grid-template-columns: minmax(0,1fr); } .pharmacy-profile-grid > .pharmacy-profile-column:last-child { grid-column: auto; } .pharmacy-info-row { grid-template-columns: 20px minmax(95px,.8fr) minmax(0,1.2fr); } }
