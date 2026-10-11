@@ -136,3 +136,23 @@ test('admin insights and reports return a valid empty-data shape', () => {
   assert.ok(report.sections.important_system_insights);
   assert.ok(report.sections.recommended_administrative_actions);
 });
+
+test('admin insights expose aggregated audit activity without audit details', () => {
+  const admin = db.prepare("SELECT id FROM users WHERE role = 'admin' LIMIT 1").get();
+  assert.ok(admin);
+  const rollback = new Error('rollback P.A.I. audit summary fixture');
+  const run = db.transaction(() => {
+    db.prepare(`
+      INSERT INTO admin_audit_logs (admin_id, action, target_type, target_name, description, reason, status)
+      VALUES (?, 'PAI_AUDIT_SUMMARY_FIXTURE', 'TEST', 'test target', 'private description', 'private reason', 'INFO')
+    `).run(admin.id);
+    const summary = getAdminInsights().audit_summary;
+    assert.ok(summary.event_count >= 1);
+    assert.ok(summary.actions.some(item => item.action === 'PAI_AUDIT_SUMMARY_FIXTURE' && item.event_count === 1));
+    assert.ok(summary.statuses.some(item => item.status === 'INFO'));
+    assert.equal(JSON.stringify(summary).includes('private description'), false);
+    assert.equal(JSON.stringify(summary).includes('private reason'), false);
+    throw rollback;
+  });
+  assert.throws(() => run(), error => error === rollback);
+});

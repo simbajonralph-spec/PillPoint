@@ -5,16 +5,36 @@ const { handleAssistantMessage } = require('../services/pai/assistant');
 const { SAFE_FAILURE_MESSAGE, PaiUnavailableError, searchForCustomer, createAvailabilityWatch } = require('../services/pai/customer');
 const { getInventoryInsights } = require('../services/pai/inventory');
 const { getAdminInsights, generateAdminReport } = require('../services/pai/insights');
+const { MAX_MESSAGE_LENGTH, explainInsights } = require('../services/pai/role-assistant');
 
 const router = express.Router();
 
 function handlePaiFailure(error, res) {
   if (error instanceof PaiUnavailableError) {
-    console.error('P.A.I. provider request failed:', error.message);
+    console.error('P.A.I. Customer request used its controlled unavailable path.');
     return res.status(503).json({ error: SAFE_FAILURE_MESSAGE });
   }
-  console.error('P.A.I. customer request failed:', error);
+  console.error('P.A.I. Customer request failed unexpectedly.');
   return res.status(500).json({ error: 'P.A.I. could not complete this request. Please use PillPoint standard search.' });
+}
+
+function handleRoleAssistantFailure(error, res) {
+  if (error.status === 422) return res.status(422).json({ error: error.message });
+  if (error instanceof PaiUnavailableError) {
+    console.error('P.A.I. role assistant provider request failed:', error.message);
+    return res.status(503).json({ error: 'P.A.I. is temporarily unavailable. Please try again shortly.' });
+  }
+  console.error('P.A.I. role assistant request failed unexpectedly.');
+  return res.status(500).json({ error: 'P.A.I. could not explain the current PillPoint analytics.' });
+}
+
+function validateRoleAssistantMessage(req, res) {
+  const message = req.body?.message;
+  if (typeof message !== 'string' || !message.trim() || message.trim().length > MAX_MESSAGE_LENGTH) {
+    res.status(422).json({ error: `Message must be between 1 and ${MAX_MESSAGE_LENGTH} characters.` });
+    return null;
+  }
+  return message.trim();
 }
 
 router.post('/assistant', requireAuth, requireRole('customer'), async (req, res) => {
@@ -98,11 +118,39 @@ router.get('/inventory-insights', requireAuth, requireRole('pharmacy_staff'), (r
   res.json(getInventoryInsights(pharmacyId));
 });
 
+router.post('/pharmacy-assistant', requireAuth, requireRole('pharmacy_staff'), async (req, res) => {
+  const pharmacyId = Number(req.session.user.pharmacy_id);
+  if (!Number.isInteger(pharmacyId) || pharmacyId <= 0) {
+    return res.status(403).json({ error: 'No pharmacy bound to this user.' });
+  }
+  const message = validateRoleAssistantMessage(req, res);
+  if (!message) return;
+  try {
+    const insights = getInventoryInsights(pharmacyId);
+    const result = await explainInsights({ role: 'pharmacy_staff', message, insights });
+    return res.json({ result });
+  } catch (error) {
+    return handleRoleAssistantFailure(error, res);
+  }
+});
+
+router.post('/admin-assistant', requireAuth, requireRole('admin'), async (req, res) => {
+  const message = validateRoleAssistantMessage(req, res);
+  if (!message) return;
+  try {
+    const insights = getAdminInsights();
+    const result = await explainInsights({ role: 'admin', message, insights });
+    return res.json({ result });
+  } catch (error) {
+    return handleRoleAssistantFailure(error, res);
+  }
+});
+
 router.get('/admin-insights', requireAuth, requireRole('admin'), (req, res) => {
   try {
     res.json(getAdminInsights());
   } catch (error) {
-    console.error('P.A.I. admin insights failed:', error);
+    console.error('P.A.I. admin insights failed unexpectedly.');
     res.status(500).json({ error: 'P.A.I. could not generate admin insights from current PillPoint data.' });
   }
 });
@@ -111,7 +159,7 @@ router.post('/admin-report', requireAuth, requireRole('admin'), (req, res) => {
   try {
     res.json(generateAdminReport());
   } catch (error) {
-    console.error('P.A.I. admin report generation failed:', error);
+    console.error('P.A.I. admin report generation failed unexpectedly.');
     res.status(500).json({ error: 'P.A.I. could not generate the report from current PillPoint data.' });
   }
 });
