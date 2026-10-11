@@ -5,61 +5,47 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Register — PillPoint</title>
 <link rel="icon" type="image/svg+xml" href="/img/logo-mark.svg" />
-<link rel="stylesheet" href="/css/style.css" />
+<link rel="stylesheet" href="/css/style.css?v=20261011-register-theme-alignment-wizard" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 </head>
-<body>
-<div class="auth-wrap">
-  <div class="auth-card card card-elevated" id="auth-card" style="max-width:460px;">
-    <div class="brand">
-      <img src="/img/logo-mark.svg" alt="PillPoint" width="34" height="34" style="border-radius:9px;" />
-      <div style="font-weight:800;font-size:19px;color:var(--navy)">Create your account</div>
-    </div>
-    <p class="text-sm muted" style="text-align:center;margin-bottom:16px;">
-      Self-registration is for customers and pharmacies only. Admin accounts are provisioned separately and can't be created here.
-    </p>
+<body class="register-page">
+<div class="register-shell">
+  <header class="login-header">
+    <a class="login-brand" href="/" aria-label="PillPoint home"><img src="/img/logo-mark.svg" alt="" width="42" height="42" /><span>PillPoint<span class="login-brand-dot">.</span></span></a>
+    <span class="login-tagline"><span aria-hidden="true">♡</span> A little care goes a long way.</span>
+  </header>
+  <main class="register-layout">
+    <section class="login-visual register-visual" aria-label="PillPoint pharmacy companion">
+      <img src="/login_images/pharmacy-still-life.jpg" alt="Medicine bottle and blister pack on a clean counter" />
+      <div class="login-visual-copy"><span class="login-visual-eyebrow">＋ &nbsp; CARE, WITHIN REACH</span><h2>Your health.<br />One less thing<br />to worry about.</h2><p>A simpler way to find your medicines<br />and keep your care close.</p></div>
+      <div class="login-visual-caption"><span aria-hidden="true">◇</span> Your everyday pharmacy companion.</div>
+    </section>
+    <section class="register-panel">
+      <div class="register-panel-inner">
+        <div class="login-kicker"><span aria-hidden="true">◇</span> PHARMACY &amp; MEDICINE RESERVATIONS</div>
+        <h1 id="register-title">A healthier start.</h1>
+        <p class="login-intro" id="register-subtitle">Tell us who you are, so we can tailor PillPoint for you.</p>
+        <div class="register-progress" aria-label="Registration progress"><span class="current"></span><span></span><span></span></div>
+        <div class="register-step-caption"><span id="register-step-number">STEP 1 OF 3</span><span id="register-step-name">ACCOUNT TYPE</span></div>
+        <div id="alert-box"></div>
 
-    <div id="alert-box"></div>
+        <section class="register-step" id="registration-step-1" aria-label="Choose account type">
+          <div class="account-type-select" id="account-type">
+            <button type="button" class="account-type-card active" data-role="customer" aria-pressed="true"><span class="account-type-icon" aria-hidden="true">♙</span><span class="title">Customer</span><span class="sub">Search &amp; reserve medicines</span></button>
+            <button type="button" class="account-type-card" data-role="pharmacy_staff" aria-pressed="false"><span class="account-type-icon" aria-hidden="true">▣</span><span class="title">Pharmacy</span><span class="sub">List inventory &amp; take reservations</span></button>
+          </div>
+          <button type="button" class="btn btn-primary btn-block register-next" id="account-type-continue">Continue <span aria-hidden="true">→</span></button>
+          <a class="register-back-link" href="/login.html">← &nbsp; Back to sign in</a>
+        </section>
 
-    <div class="account-type-select" id="account-type">
-      <button type="button" class="account-type-card active" data-role="customer">
-        <span class="icon">&#128100;</span>
-        <span class="title">Customer</span>
-        <span class="sub">Search & reserve medicine</span>
-      </button>
-      <button type="button" class="account-type-card" data-role="pharmacy_staff">
-        <span class="icon">&#127974;</span>
-        <span class="title">Pharmacy</span>
-        <span class="sub">List inventory & fulfill reservations</span>
-      </button>
-    </div>
+        <form id="register-form" novalidate>
+          <section class="register-step" id="registration-step-2" aria-label="Account details" hidden>
+            <div class="field" id="username-field"><label for="username">Username</label><input type="text" id="username" required autocomplete="username" placeholder="How should we call you?" /></div>
+            <div class="field"><label for="phone">Mobile number</label><div class="phone-input"><span class="phone-input-prefix" aria-hidden="true">+63</span><input type="tel" id="phone" placeholder="9XXXXXXXXX" inputmode="numeric" pattern="9[0-9]{9}" maxlength="10" required autocomplete="tel-national" aria-label="Philippine mobile number after +63" /></div><div class="register-help">Enter the 10-digit number starting with 9.</div></div>
+            <div class="field"><label for="email">Email address</label><input type="email" id="email" required autocomplete="email" placeholder="you@example.com" /></div>
+            <div class="field"><label for="password">Password</label><div class="password-field"><input type="password" id="password" minlength="6" required autocomplete="new-password" placeholder="Create a password" /><button type="button" class="password-toggle" id="password-toggle" aria-label="Show password">&#128065;</button></div><div class="register-help">Use at least 6 characters.</div></div>
 
-    <form id="register-form">
-      <div class="field" id="username-field">
-        <label>Username</label>
-        <input type="text" id="username" required autocomplete="username" />
-      </div>
-      <div class="field">
-        <label>Mobile Number</label>
-        <div class="phone-input">
-          <span class="phone-input-prefix" aria-hidden="true">+63</span>
-          <input type="tel" id="phone" placeholder="9XXXXXXXXX" inputmode="numeric" pattern="9[0-9]{9}" maxlength="10" required autocomplete="tel-national" aria-label="Philippine mobile number after +63" />
-        </div>
-        <div class="text-sm muted mt-8">Enter the 10-digit number starting with 9.</div>
-      </div>
-      <div class="field">
-        <label>Email</label>
-        <input type="email" id="email" required autocomplete="username" />
-      </div>
-      <div class="field">
-        <label>Password</label>
-        <div class="password-field">
-          <input type="password" id="password" minlength="6" required autocomplete="new-password" />
-          <button type="button" class="password-toggle" id="password-toggle" aria-label="Show password">&#128065;</button>
-        </div>
-      </div>
-
-      <div id="pharmacy-fields" style="display:none;">
+            <div id="pharmacy-fields" style="display:none;">
         <div class="divider" style="margin:18px 0;"></div>
         <div class="section-title" style="margin-top:0;">Pharmacy Details</div>
         <div class="field">
@@ -109,13 +95,19 @@
         <div class="alert alert-info text-sm">Your pharmacy will be listed as <strong>unverified</strong> until an admin reviews and approves it.</div>
       </div>
 
-      <button class="btn btn-primary btn-block mt-16" type="submit">Create Account</button>
-    </form>
-
-    <div class="auth-foot">
-      Already have an account? <a href="/login.html" style="color:var(--teal-dark);font-weight:600">Login</a>
-    </div>
-  </div>
+            <div class="register-step-actions"><button type="button" class="register-text-button" data-register-back>← &nbsp; Back</button><button type="button" class="btn btn-primary register-next" id="details-continue">Continue <span aria-hidden="true">→</span></button></div>
+          </section>
+          <section class="register-step" id="registration-step-3" aria-label="Review details" hidden>
+            <div class="register-review-card" id="register-review"></div>
+            <label class="register-agreement"><input type="checkbox" id="terms-agreement" required /><span>I agree to the Terms of Service and Privacy Policy.</span></label>
+            <div class="register-step-actions"><button type="button" class="register-text-button" data-register-back>← &nbsp; Back</button><button class="btn btn-primary register-next" type="submit">Create account <span aria-hidden="true">✓</span></button></div>
+          </section>
+        </form>
+        <div class="register-privacy"><span aria-hidden="true">⬡</span> Your health is personal. Let’s keep it that way.</div>
+      </div>
+    </section>
+  </main>
+  <footer class="login-footer"><span>© 2026 PillPoint. All rights reserved.</span><span>＋ &nbsp; Made with care, for your care.</span></footer>
 </div>
 
 <script src="/js/api.js"></script>
@@ -126,12 +118,69 @@ let pickedLat = null, pickedLng = null;
 let pickerMap, pickerMarker;
 let businessPermitData = null, pharmacyLogoData = null;
 let businessPermitRead = Promise.resolve(true), pharmacyLogoRead = Promise.resolve(true);
+let currentRegisterStep = 1;
+
+const registrationStepTitles = [
+  { title: 'A healthier start.', subtitle: 'Tell us who you are, so we can tailor PillPoint for you.', name: 'ACCOUNT TYPE' },
+  { title: 'Your account details.', subtitle: 'These are your sign-in credentials. Keep your password somewhere safe.', name: 'ACCOUNT DETAILS' },
+  { title: 'Almost done.', subtitle: 'Review your details before creating your account.', name: 'REVIEW' },
+];
+function showRegisterStep(step) {
+  currentRegisterStep = step;
+  document.querySelectorAll('.register-step').forEach((panel, index) => { panel.hidden = index + 1 !== step; });
+  const copy = registrationStepTitles[step - 1];
+  document.getElementById('register-title').textContent = copy.title;
+  document.getElementById('register-subtitle').textContent = copy.subtitle;
+  document.getElementById('register-step-number').textContent = `STEP ${step} OF 3`;
+  document.getElementById('register-step-name').textContent = copy.name;
+  document.querySelectorAll('.register-progress span').forEach((bar, index) => {
+    bar.classList.toggle('current', index + 1 === step);
+    bar.classList.toggle('done', index + 1 < step);
+  });
+  if (step === 2 && pickerMap) setTimeout(() => pickerMap.invalidateSize(), 80);
+  document.getElementById('register-title').focus({ preventScroll: true });
+}
+function renderRegisterReview() {
+  const entries = selectedRole === 'customer'
+    ? [['Account type', 'Customer'], ['Username', document.getElementById('username').value.trim()], ['Mobile', `+63 ${document.getElementById('phone').value.trim()}`], ['Email', document.getElementById('email').value.trim()]]
+    : [['Account type', 'Pharmacy'], ['Pharmacy', document.getElementById('pharmacy_name').value.trim()], ['Owner', `${document.getElementById('owner_first_name').value.trim()} ${document.getElementById('owner_last_name').value.trim()}`.trim()], ['Mobile', `+63 ${document.getElementById('phone').value.trim()}`], ['Email', document.getElementById('email').value.trim()], ['Address', document.getElementById('pharmacy_address').value.trim()]];
+  document.getElementById('register-review').innerHTML = entries.map(([label, value]) => `<div><span>${escapeHtml(label)}</span><strong>${escapeHtml(value || '—')}</strong></div>`).join('');
+}
+function validateRegisterDetails() {
+  const step = document.getElementById('registration-step-2');
+  for (const input of step.querySelectorAll('input, textarea, select')) {
+    if (input.required && input.getClientRects().length && !input.checkValidity()) {
+      input.reportValidity();
+      return false;
+    }
+  }
+  if (selectedRole === 'pharmacy_staff' && (pickedLat == null || pickedLng == null)) {
+    const alertBox = document.getElementById('alert-box');
+    alertBox.innerHTML = '<div class="register-error" role="alert">Please click the map to set your pharmacy location.</div>';
+    document.getElementById('pharmacy-fields').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return false;
+  }
+  return true;
+}
+
+document.getElementById('account-type-continue').addEventListener('click', () => {
+  document.getElementById('alert-box').innerHTML = '';
+  showRegisterStep(2);
+});
+document.getElementById('details-continue').addEventListener('click', () => {
+  document.getElementById('alert-box').innerHTML = '';
+  if (!validateRegisterDetails()) return;
+  renderRegisterReview();
+  showRegisterStep(3);
+});
+document.querySelectorAll('[data-register-back]').forEach(button => button.addEventListener('click', () => showRegisterStep(currentRegisterStep - 1)));
 
 document.getElementById('account-type').addEventListener('click', (e) => {
   const btn = e.target.closest('.account-type-card');
   if (!btn) return;
   document.querySelectorAll('.account-type-card').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
+  document.querySelectorAll('.account-type-card').forEach(b => b.setAttribute('aria-pressed', String(b === btn)));
   selectedRole = btn.dataset.role;
 
   const usernameField = document.getElementById('username-field');
@@ -240,6 +289,13 @@ document.getElementById('register-form').addEventListener('submit', async (e) =>
   e.preventDefault();
   const alertBox = document.getElementById('alert-box');
   alertBox.innerHTML = '';
+
+  if (!validateRegisterDetails()) { showRegisterStep(2); return; }
+  if (!document.getElementById('terms-agreement').checked) {
+    alertBox.innerHTML = '<div class="register-error" role="alert">Please agree to the Terms of Service and Privacy Policy to continue.</div>';
+    document.getElementById('terms-agreement').focus();
+    return;
+  }
 
   if (selectedRole === 'pharmacy_staff') {
     const [permitRead, logoRead] = await Promise.all([businessPermitRead, pharmacyLogoRead]);

@@ -5,47 +5,51 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Login — PillPoint</title>
 <link rel="icon" type="image/svg+xml" href="/img/logo-mark.svg" />
-<link rel="stylesheet" href="/css/style.css" />
+<link rel="stylesheet" href="/css/style.css?v=20261011-login-autofill-dark" />
 </head>
-<body>
-<div class="auth-wrap">
-  <div class="auth-card card card-elevated">
-    <div class="brand">
-      <img src="/img/logo-mark.svg" alt="PillPoint" width="34" height="34" style="border-radius:9px;" />
-      <div style="font-weight:800;font-size:19px;color:var(--navy)">PillPoint</div>
-    </div>
-
-    <div class="auth-foot" style="margin-top:0;margin-bottom:16px;">
-      <span class="badge" style="background:#ECFDF5;color:#0F766E;"><span class="icon">&#128137;</span> Pharmacy &amp; Medicine Reservation Platform</span>
-    </div>
-
-    <div id="alert-box"></div>
-
-    <form id="login-form">
-      <div class="field">
-        <label>Email</label>
-        <input type="email" id="email" required autocomplete="username" />
+<body class="login-page">
+<div class="login-shell">
+  <header class="login-header">
+    <a class="login-brand" href="/" aria-label="PillPoint home">
+      <img src="/img/logo-mark.svg" alt="" width="42" height="42" />
+      <span>PillPoint<span class="login-brand-dot">.</span></span>
+    </a>
+    <span class="login-tagline"><span aria-hidden="true">♡</span> A little care goes a long way.</span>
+  </header>
+  <main class="login-layout">
+    <section class="login-visual" aria-label="PillPoint pharmacy companion">
+      <img src="/login_images/pharmacy-still-life.jpg" alt="Medicine bottle and blister pack on a clean counter" />
+      <div class="login-visual-copy">
+        <span class="login-visual-eyebrow">＋ &nbsp; CARE, WITHIN REACH</span>
+        <h2>Your health.<br />One less thing<br />to worry about.</h2>
+        <p>A simpler way to find your medicines<br />and keep your care close.</p>
       </div>
-      <div class="field">
-        <label>Password</label>
-        <div class="password-field">
-          <input type="password" id="password" required autocomplete="current-password" />
-          <button type="button" class="password-toggle" id="password-toggle" aria-label="Show password">&#128065;</button>
-        </div>
+      <div class="login-visual-caption"><span aria-hidden="true">◇</span> Your everyday pharmacy companion.</div>
+    </section>
+    <section class="login-panel">
+      <div class="login-panel-inner">
+        <div class="login-kicker"><span aria-hidden="true">◇</span> PHARMACY &amp; MEDICINE RESERVATIONS</div>
+        <h1>Welcome back.</h1>
+        <p class="login-intro">Good to see you again. Sign in to your account.</p>
+        <div id="alert-box"></div>
+        <form id="login-form">
+          <div class="field">
+            <label for="email">Email address</label>
+            <div class="login-input-wrap"><span aria-hidden="true">✉</span><input type="email" id="email" required autocomplete="username" /></div>
+          </div>
+          <div class="field">
+            <label for="password">Password</label>
+            <div class="login-input-wrap"><span aria-hidden="true">♙</span><div class="password-field"><input type="password" id="password" required autocomplete="current-password" placeholder="Enter your password" /><button type="button" class="password-toggle" id="password-toggle" aria-label="Show password">&#128065;</button></div></div>
+          </div>
+          <div class="login-options"><label class="checkbox-label"><input type="checkbox" id="remember" /><span>Remember me</span></label></div>
+          <button class="btn btn-primary btn-block login-submit" type="submit">Sign in <span aria-hidden="true">→</span></button>
+        </form>
+        <div class="login-register-prompt">New to PillPoint? <a href="/register.html" class="login-register-link">Create an account</a></div>
+        <div class="login-privacy"><span aria-hidden="true">⬡</span> Your health is personal. Let’s keep it that way.</div>
       </div>
-      <div class="field flex items-center justify-between" style="margin-bottom:20px;">
-        <label class="checkbox-label">
-          <input type="checkbox" id="remember" />
-          <span>Remember me</span>
-        </label>
-      </div>
-      <button class="btn btn-primary btn-block" type="submit">Sign In</button>
-    </form>
-
-    <div class="auth-foot">
-      Don't have an account? <a href="/register.html" style="color:var(--teal-dark);font-weight:600">Register</a>
-    </div>
-  </div>
+    </section>
+  </main>
+  <footer class="login-footer"><span>© 2026 PillPoint. All rights reserved.</span><span>＋ &nbsp; Made with care, for your care.</span></footer>
 </div>
 
 <script src="/js/api.js"></script>
