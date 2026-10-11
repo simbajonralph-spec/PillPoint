@@ -1,4 +1,5 @@
 const db = require('../../db/database');
+const { eligibleBatchQuantitySql } = require('../inventory-batches');
 
 const DEMAND_WINDOW_DAYS = 7;
 const EXPIRY_WINDOW_DAYS = 30;
@@ -498,6 +499,58 @@ function getPerformanceSummary(pharmacyId, rows, searchActivity, expiryRisk, sto
   };
 }
 
+function getOperationalInventorySummary(pharmacyId) {
+  const eligibleBatchQuantity = eligibleBatchQuantitySql('i');
+  const reservations = `COALESCE((SELECT SUM(r.quantity) FROM reservations r
+    WHERE r.inventory_id = i.id AND r.status IN ('pending','confirmed','ready_for_pickup')), 0)`;
+  const rows = db.prepare(`
+    SELECT i.id AS inventory_id, m.name AS medicine_name, i.stock_quantity,
+      ${reservations} AS reserved_quantity,
+      MIN(i.stock_quantity, ${eligibleBatchQuantity}) AS eligible_batch_stock
+    FROM inventory i JOIN medicines m ON m.id = i.medicine_id
+    WHERE i.pharmacy_id = ?
+    ORDER BY m.name ASC
+  `).all(pharmacyId).map(item => {
+    const stock = Number(item.stock_quantity || 0);
+    const eligibleStock = Math.max(0, Number(item.eligible_batch_stock || 0));
+    const reserved = Number(item.reserved_quantity || 0);
+    return {
+      inventory_id: item.inventory_id,
+      medicine_name: item.medicine_name,
+      physical_stock: stock,
+      eligible_batch_stock: eligibleStock,
+      reserved_quantity: reserved,
+      available_quantity: Math.max(0, eligibleStock - reserved),
+    };
+  });
+  const totals = rows.reduce((summary, item) => ({
+    physical_stock: summary.physical_stock + item.physical_stock,
+    eligible_batch_stock: summary.eligible_batch_stock + item.eligible_batch_stock,
+    reserved_quantity: summary.reserved_quantity + item.reserved_quantity,
+    available_quantity: summary.available_quantity + item.available_quantity,
+  }), { physical_stock: 0, eligible_batch_stock: 0, reserved_quantity: 0, available_quantity: 0 });
+  const movements = db.prepare(`
+    SELECT transaction_type, COUNT(*) AS movement_count,
+      COALESCE(SUM(ABS(quantity)), 0) AS moved_units
+    FROM stock_transactions
+    WHERE pharmacy_id = ? AND created_at >= datetime('now', '-30 days')
+    GROUP BY transaction_type ORDER BY transaction_type
+  `).all(pharmacyId).map(item => ({
+    transaction_type: item.transaction_type,
+    movement_count: Number(item.movement_count),
+    moved_units: Number(item.moved_units),
+  }));
+  return {
+    inventory_quantities: {
+      reporting_note: 'Available quantity is eligible batch stock less pending, confirmed, and ready-for-pickup reservations; eligible batch stock is capped at recorded physical stock.',
+      inventory_count: rows.length,
+      totals,
+      items: rows.slice(0, 50),
+    },
+    stock_movements: { reporting_period: 'Last 30 days', items: movements },
+  };
+}
+
 function getInventoryInsights(pharmacyId) {
   const rows = getInventoryRows(pharmacyId);
   const searchActivity = getSearchActivity(pharmacyId, rows.map(item => Number(item.medicine_id)));
@@ -521,6 +574,7 @@ function getInventoryInsights(pharmacyId) {
   const performanceSummary = getPerformanceSummary(
     pharmacyId, rows, searchActivity, expiryRisk, stockRisk, demandAnalysis
   );
+  const operationalSummary = getOperationalInventorySummary(pharmacyId);
 
   return {
     generated_at: new Date().toISOString(),
@@ -543,6 +597,7 @@ function getInventoryInsights(pharmacyId) {
     price_analysis: priceAnalysis,
     data_quality: dataQuality,
     performance_summary: performanceSummary,
+    ...operationalSummary,
   };
 }
 

@@ -450,6 +450,19 @@ function getAdminInsights() {
     LIMIT 20
   `).all();
   const searches30Days = data.search.rows.length;
+  const auditSummary = {
+    reporting_period: 'Last 30 days',
+    event_count: Number(db.prepare(`SELECT COUNT(*) AS count FROM admin_audit_logs
+      WHERE created_at >= datetime('now', '-30 days')`).get().count),
+    latest_event_at: db.prepare(`SELECT MAX(created_at) AS created_at FROM admin_audit_logs
+      WHERE created_at >= datetime('now', '-30 days')`).get().created_at || null,
+    actions: db.prepare(`SELECT action, COUNT(*) AS event_count FROM admin_audit_logs
+      WHERE created_at >= datetime('now', '-30 days') GROUP BY action ORDER BY event_count DESC, action LIMIT 20`)
+      .all().map(item => ({ action: item.action, event_count: Number(item.event_count) })),
+    statuses: db.prepare(`SELECT status, COUNT(*) AS event_count FROM admin_audit_logs
+      WHERE created_at >= datetime('now', '-30 days') GROUP BY status ORDER BY event_count DESC, status`)
+      .all().map(item => ({ status: item.status, event_count: Number(item.event_count) })),
+  };
 
   return {
     generated_at: new Date().toISOString(),
@@ -480,6 +493,7 @@ function getAdminInsights() {
     pharmacy_participation: data.participation,
     anomalies: anomalies.slice(0, 30),
     price_anomalies: priceAnomalies,
+    audit_summary: auditSummary,
   };
 }
 

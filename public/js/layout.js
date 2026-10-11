@@ -173,6 +173,29 @@ function buildShell(user, pageTitle, pageSub) {
       updateNotificationBadge(data.notifications);
     }).catch(() => {});
   }, 30000);
+  mountPaiAssistant(user, path);
+}
+
+function mountPaiAssistant(user, path) {
+  if (!['customer', 'pharmacy_staff', 'admin'].includes(user.role)) return;
+  if (document.getElementById('pai-assistant-script')) {
+    window.PaiAssistant?.init({ role: user.role });
+    return;
+  }
+
+  if (!document.getElementById('pai-assistant-styles')) {
+    const styles = document.createElement('link');
+    styles.id = 'pai-assistant-styles';
+    styles.rel = 'stylesheet';
+    styles.href = '/css/pai-assistant.css';
+    document.head.appendChild(styles);
+  }
+
+  const script = document.createElement('script');
+  script.id = 'pai-assistant-script';
+  script.src = '/js/pai-assistant.js';
+  script.onload = () => window.PaiAssistant?.init({ role: user.role });
+  document.body.appendChild(script);
 }
 
 function updateNotificationBadge(notifications) {
