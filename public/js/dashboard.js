@@ -11,7 +11,11 @@
     data.statusCounts.forEach(s => counts[s.status] = s.count);
     const greeting = new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 18 ? 'Good afternoon' : 'Good evening';
     content.innerHTML = `
-      <section class="customer-welcome"><div><span class="customer-welcome-icon"><img class="customer-dashboard-image-icon" src="/icons/good_morning.png" alt="" /></span><div><h2>${greeting}, ${escapeHtml(data.user.name)}!</h2><p>Your health is our priority. Find the right medicine, nearby and hassle-free.</p></div></div></section>
+      <section class="customer-welcome"><div>${data.user.profile_image
+        ? `<button type="button" class="customer-welcome-icon has-profile-photo" id="customer-photo-open" aria-label="View ${escapeHtml(data.user.name)}'s profile photo"><img class="customer-dashboard-image-icon" src="${escapeHtml(data.user.profile_image)}" alt="" /></button>`
+        : '<span class="customer-welcome-icon"><img class="customer-dashboard-image-icon" src="/icons/good_morning.png" alt="" /></span>'
+      }<div><h2>${greeting}, ${escapeHtml(data.user.name)}! <span class="customer-welcome-wave" aria-hidden="true">👋</span></h2><p>Your health is our priority. Find the right medicine, nearby and hassle-free.</p></div></div></section>
+      ${data.user.profile_image ? `<dialog class="customer-photo-viewer" id="customer-photo-viewer" aria-label="Profile photo"><button type="button" class="customer-photo-viewer-close" aria-label="Close photo">×</button><img src="${escapeHtml(data.user.profile_image)}" alt="${escapeHtml(data.user.name)}'s profile photo" /></dialog>` : ''}
       <section class="customer-stat-grid" aria-label="Reservation summary">
         <div class="customer-stat-card pending"><span class="customer-stat-icon"><img class="customer-dashboard-image-icon" src="/icons/pending.png" alt="" /></span><strong>Pending</strong><b>${counts.pending || 0}</b><small>No pending reservations</small></div>
         <div class="customer-stat-card confirmed"><span class="customer-stat-icon"><img class="customer-dashboard-image-icon" src="/icons/confirmed.png" alt="" /></span><strong>Confirmed</strong><b>${counts.confirmed || 0}</b><small>No confirmed reservations</small></div>
@@ -25,12 +29,6 @@
         </section>
         <aside class="customer-dashboard-side">
           <section class="customer-medicine-cta"><span class="customer-cta-icon"><img class="customer-dashboard-image-icon" src="/icons/need_medicine.png" alt="" /></span><div><h2>Need Medicine?</h2><p>Search for a medicine, find nearby pharmacies, and reserve it before you go.</p><a class="customer-search-button" href="/search.html"><span class="customer-sprite sprite-search" aria-hidden="true"></span> Search Medicines <span class="customer-arrow" aria-hidden="true"></span></a></div></section>
-          <section class="card customer-quick-actions"><h2><span class="customer-sprite sprite-lightning" aria-hidden="true"></span> Quick Actions</h2>
-            <a href="/search.html"><i class="customer-sprite sprite-search"></i><span><strong>Search & Nearby</strong><small>Find medicines and nearby pharmacies</small></span><b class="customer-arrow" aria-hidden="true"></b></a>
-            <a href="/reservations.html"><i class="customer-sprite sprite-clipboard"></i><span><strong>My Reservations</strong><small>View and manage your bookings</small></span><b class="customer-arrow" aria-hidden="true"></b></a>
-            <a href="/notifications.html"><i class="customer-sprite sprite-bell"></i><span><strong>Notifications</strong><small>Check your latest updates</small></span><b class="customer-arrow" aria-hidden="true"></b></a>
-            <a href="/profile.html"><i class="customer-sprite sprite-user"></i><span><strong>Profile</strong><small>Manage your account information</small></span><b class="customer-arrow" aria-hidden="true"></b></a>
-          </section>
         </aside>
       </div>
       <section class="customer-health-banner"><span class="customer-health-mark"><img class="customer-dashboard-image-icon" src="/icons/quality_medicine_close_to_you.png" alt="" /></span><div><strong>Quality Medicines. Closer to You.</strong><p>PillPoint connects you with trusted pharmacies in your area,<br class="desktop-break"> so you can get the care you need, when you need it.</p></div><span class="customer-health-pulse"><img class="customer-dashboard-image-icon" src="/icons/health_made_easier.png" alt="" /></span><img class="customer-health-caption" src="/icons/health_made_easier_text.png?v=teal" alt="Health made easier" /></section>
@@ -40,6 +38,13 @@
         <details class="card customer-pharmacy-details"><summary>Top rated pharmacies <span>${data.topRatedPharmacies.length}</span></summary>${data.topRatedPharmacies.length ? `<div class="top-rated-pharmacies">${data.topRatedPharmacies.map(pharmacy => `<a class="card top-rated-card" href="/pharmacy-profile.html?id=${pharmacy.id}"><div class="top-rated-avatar">${pharmacy.profile_image || pharmacy.cover_image ? `<img src="${escapeHtml(pharmacy.profile_image || pharmacy.cover_image)}" alt="" />` : '<span aria-hidden="true">Rx</span>'}</div><div class="top-rated-details"><strong>${escapeHtml(pharmacy.name)}</strong><span class="text-sm muted">${escapeHtml(pharmacy.address)}</span><span class="top-rated-score"><span class="customer-sprite sprite-star" aria-hidden="true"></span> ${pharmacy.average_rating} ratings</span></div></a>`).join('')}</div>` : '<p class="customer-empty-note">Verified pharmacy partners will appear here after customers leave ratings.</p>'}</details>
       </section>
     `;
+
+    const photoDialog = document.getElementById('customer-photo-viewer');
+    document.getElementById('customer-photo-open')?.addEventListener('click', () => photoDialog?.showModal());
+    photoDialog?.querySelector('.customer-photo-viewer-close')?.addEventListener('click', () => photoDialog.close());
+    photoDialog?.addEventListener('click', event => {
+      if (event.target === photoDialog) photoDialog.close();
+    });
     loadNearbyMap();
   } catch (err) {
     content.innerHTML = `<div class="alert alert-error">${escapeHtml(err.message)}</div>`;

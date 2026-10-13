@@ -10,11 +10,6 @@
       <button class="btn btn-primary" id="search-btn" type="button"><span aria-hidden="true">⌕</span> Search</button>
       <div class="field search-category"><label for="category">Category</label><select id="category"><option value="">All categories</option></select></div>
     </section>
-    <details class="card search-ai" id="ai-search-panel">
-      <summary>Use Smart Search</summary>
-      <div class="search-ai-form"><div class="field grow"><label for="pai-q">Describe what you need</label><input type="text" id="pai-q" placeholder="Try: paracetamol or under 50" /></div><button class="btn btn-secondary" id="pai-search-btn" type="button">Ask PillPoint</button></div>
-      <div id="pai-results" class="mt-16"></div>
-    </details>
     <div id="shortage-notice"></div>
     <div class="sr-only" id="pharmacy-recommendations" aria-live="polite"></div>
     <div class="search-main-grid" id="map-region">
@@ -27,10 +22,7 @@
           <div class="search-map-top"><div id="location-status" class="text-sm muted" role="status" aria-live="polite">Checking current location...</div><button class="btn btn-outline btn-sm" id="locate-btn" type="button">Locate me</button></div>
           <div class="map-placeholder search-map-frame"><div id="leaflet-map"></div></div>
           <div class="search-medicine-summary" id="search-medicine-summary"><span class="search-medicine-icon" aria-hidden="true">Rx</span><div><strong id="summary-medicine-name">Search a medicine</strong><small id="summary-medicine-category">Nearby availability appears here</small></div></div>
-          <div class="search-trust-points"><span><b aria-hidden="true">✓</b> Verified Pharmacies</span><span><b aria-hidden="true">◷</b> Real-time Availability</span><span><b aria-hidden="true">⌖</b> Nearby Locations</span></div>
-          <div id="directions-status" class="search-directions-status" role="status" aria-live="polite">Choose Directions on a pharmacy result to plan your route.</div>
         </section>
-        <section class="search-more-card"><span class="search-more-pin" aria-hidden="true">⌖</span><div><strong>Need something else?</strong><small>Search another medicine or explore more categories.</small></div><span aria-hidden="true">›</span></section>
       </aside>
     </div>
     <div class="sr-only" id="pharmacy-list" aria-live="polite"></div>
@@ -131,66 +123,6 @@
   document.getElementById('search-btn').addEventListener('click', runSearch);
   categorySelect.addEventListener('change', runSearch);
   qInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') runSearch(); });
-
-  async function runPaiSearch() {
-    const prompt = document.getElementById('pai-q').value.trim();
-    const paiResults = document.getElementById('pai-results');
-    if (!prompt) {
-      paiResults.innerHTML = '<div class="alert alert-error">Please enter a medicine name or search phrase.</div>';
-      return;
-    }
-
-    paiResults.innerHTML = '<div class="alert alert-info">Searching verified medicines...</div>';
-
-    try {
-      const data = await Api.get('/api/pai/search?q=' + encodeURIComponent(prompt));
-      if (data.type === 'suggestion') {
-        paiResults.innerHTML = `
-          <div class="alert alert-warning">${escapeHtml(data.message)}</div>
-          <div class="flex gap-12 mt-12">
-            ${(data.suggestions || []).map(item => `<button class="btn btn-secondary btn-sm pai-suggestion" type="button" data-name="${escapeHtml(item.name)}">${escapeHtml(item.name)}</button>`).join('')}
-          </div>
-        `;
-        paiResults.querySelectorAll('.pai-suggestion').forEach(button => button.addEventListener('click', () => {
-          document.getElementById('pai-q').value = button.dataset.name;
-          runPaiSearch();
-        }));
-        await runSearch({ results: [], categories: [], shortageMedicineIds: [] });
-        return;
-      }
-
-      const watchAction = data.can_watch && data.medicine_id
-        ? `<button class="btn btn-outline btn-sm mt-12" id="pai-watch-btn" type="button">Notify me when available</button>`
-        : '';
-      paiResults.innerHTML = `<div class="alert ${data.results?.length ? 'alert-info' : 'alert-warning'}">${escapeHtml(data.message)}</div>${watchAction}`;
-
-      if (data.medicine_name) qInput.value = data.medicine_name;
-      categorySelect.value = '';
-      await runSearch(data);
-
-      const watchButton = document.getElementById('pai-watch-btn');
-      if (watchButton) {
-        watchButton.addEventListener('click', async () => {
-          watchButton.disabled = true;
-          try {
-            const watch = await Api.post('/api/pai/availability-watch', {
-              medicine_id: data.medicine_id,
-              pharmacy_id: data.pharmacy_id || null,
-            });
-            paiResults.innerHTML = `<div class="alert alert-success">${escapeHtml(watch.message)}</div>`;
-          } catch (err) {
-            watchButton.disabled = false;
-            paiResults.insertAdjacentHTML('beforeend', `<div class="alert alert-error mt-12">${escapeHtml(err.message)}</div>`);
-          }
-        });
-      }
-    } catch (err) {
-      paiResults.innerHTML = `<div class="alert alert-error">${escapeHtml(err.message)}</div>`;
-    }
-  }
-
-  document.getElementById('pai-search-btn').addEventListener('click', runPaiSearch);
-  document.getElementById('pai-q').addEventListener('keydown', (e) => { if (e.key === 'Enter') runPaiSearch(); });
 
   // ---------- Map ----------
   const list = document.getElementById('pharmacy-list');
@@ -352,23 +284,22 @@
   }
 
   async function showDirections(pharmacy) {
-    const status = document.getElementById('directions-status');
     const destinationLat = Number(pharmacy.latitude);
     const destinationLng = Number(pharmacy.longitude);
     if (!userLoc) {
-      status.textContent = 'Your current location is unavailable. Allow location access and try again.';
+      toast('Your current location is unavailable. Allow location access and try again.', 'error');
       return;
     }
     if (!Number.isFinite(destinationLat) || !Number.isFinite(destinationLng)
       || Math.abs(destinationLat) > 90 || Math.abs(destinationLng) > 180) {
-      status.textContent = `Directions unavailable: ${pharmacy.pharmacy_name} has no valid map coordinates.`;
+      toast(`Directions unavailable: ${pharmacy.pharmacy_name} has no valid map coordinates.`, 'error');
       return;
     }
 
     clearRoute();
     const controller = new AbortController();
     routeController = controller;
-    status.textContent = `Getting road directions to ${pharmacy.pharmacy_name}...`;
+    toast(`Getting directions to ${pharmacy.pharmacy_name}...`);
     const url = `https://router.project-osrm.org/route/v1/driving/${userLoc.lng},${userLoc.lat};${destinationLng},${destinationLat}?overview=full&geometries=geojson&steps=false`;
     try {
       const response = await fetch(url, { signal: controller.signal });
@@ -376,7 +307,7 @@
       const data = await response.json();
       const route = data.code === 'Ok' && data.routes?.[0];
       if (!route || !Array.isArray(route.geometry?.coordinates) || !route.geometry.coordinates.length) {
-        status.textContent = `No road route was found to ${pharmacy.pharmacy_name}.`;
+        toast(`No road route was found to ${pharmacy.pharmacy_name}.`, 'error');
         return;
       }
 
@@ -388,10 +319,10 @@
       const duration = Number.isFinite(route.duration)
         ? ` · about ${Math.max(1, Math.round(route.duration / 60))} min`
         : '';
-      status.textContent = `Road route to ${pharmacy.pharmacy_name}: ${distance}${duration}.`;
+      toast(`Road route to ${pharmacy.pharmacy_name}: ${distance}${duration}.`);
     } catch (error) {
       if (error.name === 'AbortError') return;
-      status.textContent = 'Could not load road directions. Check your connection and try again.';
+      toast('Could not load road directions. Check your connection and try again.', 'error');
     } finally {
       if (routeController === controller) routeController = null;
     }

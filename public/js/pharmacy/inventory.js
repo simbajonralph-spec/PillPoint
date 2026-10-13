@@ -92,6 +92,9 @@
           if (panel) panel.removeAttribute('style');
           return;
         }
+        document.querySelectorAll('.inventory-menu[open]').forEach(otherMenu => {
+          if (otherMenu !== menu) otherMenu.open = false;
+        });
         panel.style.position = 'fixed';
         panel.style.visibility = 'hidden';
         panel.style.left = '0';
@@ -229,7 +232,7 @@
         <td style="white-space:nowrap;">
           <select class="move-folder-select" data-id="${item.id}" style="padding:5px;border:1px solid var(--border);border-radius:6px;font-size:12px;">
             <option value="">Inventory Table</option>
-            ${allFolders.map(f => `<option value="${f.id}" ${item.folder_id === f.id ? 'selected' : ''}>${escapeHtml(f.name)}</option>`).join('')}
+            ${allFolders.map(f => `<option value="${f.id}" ${Number(item.folder_id) === Number(f.id) ? 'selected' : ''}>${escapeHtml(f.name)}</option>`).join('')}
           </select>
           <button class="btn btn-danger btn-sm delete-btn" data-id="${item.id}">Delete</button>
         </td>
@@ -390,8 +393,29 @@
     return { totalMedicines: uniqueMedicineIds.size, totalStock, lowStock, outOfStock, reserved, inventoryValue, expiringSoon, expired };
   }
 
-  async function publishProducts(ids, shouldPublish) {
+  async function publishProducts(ids, shouldPublish, preferredFolderId = null) {
     if (!ids.length) return;
+    let folderId = null;
+    if (shouldPublish) {
+      const publishableFolders = allFolders.filter(folder => folder.status !== 'archived');
+      if (!publishableFolders.length) {
+        toast('Create a Product Folder before publishing inventory.', 'error');
+        return;
+      }
+      folderId = await appModal({
+        title: 'Choose a Product Folder',
+        message: ids.length === 1
+          ? 'Choose where this product should appear in your published inventory.'
+          : `Choose the Product Folder for these ${ids.length} products.`,
+        select: {
+          label: 'Product Folder',
+          value: publishableFolders.some(folder => Number(folder.id) === Number(preferredFolderId)) ? preferredFolderId : '',
+          options: publishableFolders.map(folder => ({ value: folder.id, label: folder.name })),
+        },
+        confirmText: 'Continue to publish',
+      });
+      if (folderId == null) return;
+    }
     if (!shouldPublish && !await appModal({
       title: 'Unpublish selected products?',
       message: 'Customers will no longer see these products. Inventory, batches, and stock quantities will be retained.',
@@ -400,10 +424,19 @@
     })) return;
     try {
       const action = shouldPublish ? 'publish' : 'unpublish';
-      const result = await Api.post(`/api/pharmacy/inventory/${action}`, { inventory_ids: ids });
+      const result = await Api.post(`/api/pharmacy/inventory/${action}`, {
+        inventory_ids: ids,
+        ...(shouldPublish ? { folder_id: Number(folderId) } : {}),
+      });
       ids.forEach(id => selectedInventoryIds.delete(Number(id)));
       const count = shouldPublish ? result.published_count : result.unpublished_count;
-      toast(`${count} product(s) ${shouldPublish ? 'published' : 'unpublished'}. Physical stock was not changed.`);
+      if (shouldPublish) {
+        const destination = allFolders.find(folder => Number(folder.id) === Number(folderId));
+        expanded.add(Number(folderId));
+        toast(`${count} product(s) published in ${destination?.name || 'the selected folder'}. Physical stock was not changed.`);
+      } else {
+        toast(`${count} product(s) unpublished. Physical stock was not changed.`);
+      }
       await load();
       loadDeployHistory();
     } catch (err) {
@@ -700,7 +733,7 @@
         const item = inventoryRows.find(row => row.id === itemId);
         if (!item) return;
         if (button.dataset.action === 'publish') {
-          await publishProducts([item.id], true);
+          await publishProducts([item.id], true, item.folder_id);
           return;
         }
         if (button.dataset.action === 'unpublish') {
@@ -1028,7 +1061,7 @@
       foldersList.innerHTML = `<div class="empty-state"><div class="icon">&#128193;</div><h3>No folders yet</h3><p>Create a folder to organize products. Publish products individually or publish all valid products in a folder.</p></div>`;
       return;
     }
-    const foldersWithProducts = allFolders.map(f => ({ ...f, _products: inventoryRows.filter(r => r.folder_id === f.id) }));
+    const foldersWithProducts = allFolders.map(f => ({ ...f, _products: inventoryRows.filter(r => Number(r.folder_id) === Number(f.id)) }));
     const unassigned = inventoryRows.filter(r => !r.folder_id);
     let html = foldersWithProducts.map(folderCard).join('');
     if (unassigned.length) {

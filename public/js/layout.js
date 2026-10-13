@@ -39,15 +39,16 @@ function buildShell(user, pageTitle, pageSub) {
     </a>`).join('');
 
   const isPharmacy = user.role === 'pharmacy_staff';
-  const hideCustomerTopbarUser = user.role === 'customer' && ['/reservations.html', '/notifications.html', '/profile.html'].includes(path);
+  document.body.classList.toggle('pharmacy-dark-page', isPharmacy);
+  const hideTopbarUser = user.role === 'admin'
+    || (user.role === 'customer' && ['/reservations.html', '/notifications.html', '/profile.html'].includes(path));
   document.body.insertAdjacentHTML('afterbegin', `
     <div class="app-shell${isPharmacy ? ' pharmacy-dark' : (user.role === 'customer' && path === '/dashboard.html' ? ' customer-dashboard-page' : (user.role === 'customer' && path === '/search.html' ? ' customer-search-page' : ''))}" id="app-shell">
       <aside class="sidebar" id="app-sidebar" aria-label="Main navigation">
         <div class="brand">
           <img src="/img/logo-mark.svg" alt="PillPoint" class="brand-badge" width="34" height="34" />
           <div class="brand-name-wrap">
-            <div class="brand-name">PillPoint</div>
-            ${isPharmacy ? '<span class="brand-subtitle">Healthier Communities</span>' : ''}
+            <div class="brand-name"><span class="brand-pill">Pill</span><span class="brand-point">Point</span></div>
           </div>
         </div>
         <nav>${navHtml}</nav>
@@ -71,7 +72,7 @@ function buildShell(user, pageTitle, pageSub) {
             ${pageSub ? `<div class="sub">${pageSub}</div>` : ''}
           </div>
           <div class="topbar-actions">
-            ${!isPharmacy && !hideCustomerTopbarUser ? `<div class="topbar-user">
+            ${!isPharmacy && !hideTopbarUser ? `<div class="topbar-user">
               <button type="button" class="topbar-profile-toggle" id="topbar-user-toggle" aria-label="Open user menu" aria-haspopup="menu" aria-expanded="false" aria-controls="topbar-user-menu">
                 <span class="topbar-profile-avatar">${user.profile_image ? `<img src="${escapeHtml(user.profile_image)}" alt="" />` : iconSvg('user', 18)}</span>
                 <span class="topbar-user-name">${escapeHtml(user.name)}</span>

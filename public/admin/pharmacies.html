@@ -8,8 +8,8 @@
 <link rel="stylesheet" href="/css/admin-pharmacies-theme.css" />
 <style>
 .pharmacy-branch-row { cursor: pointer; }
-.pharmacy-branch-row:hover { background: #f0fdfa; }
-.pharmacy-branch-row:focus-within { outline: 2px solid var(--teal-dark); outline-offset: -2px; }
+.pharmacy-branch-row:hover { background: rgba(13,69,78,.38); }
+.pharmacy-branch-row:focus-within { outline: 2px solid #14b8a6; outline-offset: -2px; }
 .pharmacies-table { table-layout: fixed; }
 .pharmacies-table th,
 .pharmacies-table td { min-width: 0; overflow-wrap: anywhere; vertical-align: top; }
@@ -42,15 +42,16 @@
   if (!user) return;
   document.body.classList.add('admin-pharmacies-page');
   document.getElementById('app-shell')?.classList.add('admin-pharmacies-shell');
+  document.querySelector('.topbar-heading')?.setAttribute('hidden', '');
   const content = document.getElementById('page-content');
   content.innerHTML = `
-    <div class="filters-row">
-      <div class="field grow">
-        <label>Search</label>
-        <input type="text" id="search-input" placeholder="Search by name, address, or phone" />
-      </div>
-      <div class="field">
-        <label for="status-filter">Verification status</label>
+    <header class="pharmacy-page-heading">
+      <span class="pharmacy-page-heading-icon">${iconSvg('pill', 30)}</span>
+      <div><h1>Manage Pharmacies</h1><p>Verify, search, or notify registered pharmacies</p></div>
+    </header>
+    <div class="filters-row pharmacy-toolbar">
+      <label class="pharmacy-search-field"><span>${iconSvg('search', 20)}</span><input type="text" id="search-input" aria-label="Search pharmacies" placeholder="Search by name, address, or phone number..." /></label>
+      <label class="pharmacy-status-field"><span>${iconSvg('sliders', 18)}</span><span class="pharmacy-status-label">Verification Status</span>
         <select id="status-filter">
           <option value="ALL">All statuses</option>
           <option value="PENDING">Pending</option>
@@ -61,7 +62,8 @@
           <option value="SUSPENDED">Suspended</option>
           <option value="REVERIFICATION_REQUIRED">Reverification required</option>
         </select>
-      </div>
+      </label>
+      <a class="btn btn-primary pharmacy-add-button" href="/register.html">${iconSvg('plus', 18)} Add Pharmacy</a>
     </div>
     <div id="list" class="table-wrap">${skeletonLoader('table', 4)}</div>
   `;
@@ -224,25 +226,27 @@
       if (status !== 'ALL') params.set('status', status);
       const data = await Api.get('/api/admin/pharmacies?' + params.toString());
       if (!data.pharmacies.length) {
-        list.innerHTML = `<div class="empty-state"><h3>No pharmacies found</h3><p>Try a different search term.</p></div>`;
+        list.innerHTML = `<section class="pharmacy-table-card"><div class="pharmacy-table-summary"><strong>${iconSvg('building', 18)} 0 Pharmacies</strong></div><div class="empty-state"><h3>No pharmacies found</h3><p>Try a different search term.</p></div></section>`;
         return;
       }
       list.innerHTML = `
-        <div class="card" style="padding:0;">
+        <section class="pharmacy-table-card">
+          <div class="pharmacy-table-summary"><strong>${iconSvg('building', 18)} ${data.pharmacies.length} ${data.pharmacies.length === 1 ? 'Pharmacy' : 'Pharmacies'}</strong><span class="pharmacy-sort-label">${iconSvg('sliders', 16)} Sorted by: Name</span></div>
           <table class="pharmacies-table">
-            <thead><tr><th>Pharmacy branch</th><th>Address</th><th>Phone</th><th>Reservations</th><th>Status</th><th>Actions</th></tr></thead>
+            <colgroup><col class="col-branch" /><col class="col-address" /><col class="col-phone" /><col class="col-reservations" /><col class="col-status" /><col class="col-actions" /></colgroup>
+            <thead><tr><th><span>${iconSvg('building', 17)} Pharmacy Branch</span></th><th><span>${iconSvg('pin', 17)} Address</span></th><th><span>☎ Phone</span></th><th><span>${iconSvg('calendar', 17)} Reservations</span></th><th><span>${iconSvg('shield', 17)} Status</span></th><th><span>${iconSvg('sliders', 17)} Actions</span></th></tr></thead>
             <tbody>
               ${data.pharmacies.map(p => `
                 <tr class="pharmacy-branch-row" data-branch-id="${p.id}" title="Click to view this branch's registration submission">
-                  <td><button type="button" class="branch-submission-btn" data-id="${p.id}" aria-expanded="false" aria-controls="submission-${p.id}" style="padding:0;border:0;background:none;color:var(--teal-dark);font-weight:700;text-align:left;text-decoration:underline;cursor:pointer;">${escapeHtml(p.name)}</button></td>
-                  <td class="text-sm muted">${escapeHtml(p.address)}</td>
-                  <td class="text-sm muted">${escapeHtml(p.phone || 'Not submitted')}</td>
-                  <td>${p.reservation_count}</td>
+                  <td><div class="pharmacy-name-cell"><span class="pharmacy-row-avatar">${iconSvg('building', 23)}</span><span><button type="button" class="branch-submission-btn" data-id="${p.id}" aria-expanded="false" aria-controls="submission-${p.id}">${escapeHtml(p.name)}${p.verification_status === 'APPROVED' ? `<span class="pharmacy-verified-mark" aria-label="Verified">${iconSvg('check', 12)}</span>` : ''}</button><small>Registered pharmacy</small></span></div></td>
+                  <td class="pharmacy-data-cell"><span class="pharmacy-data-content"><span class="pharmacy-cell-icon">${iconSvg('pin', 17)}</span><span>${escapeHtml(p.address)}</span></span></td>
+                  <td class="pharmacy-data-cell"><span class="pharmacy-data-content"><span class="pharmacy-cell-icon">☎</span><span>${escapeHtml(p.phone || 'Not submitted')}</span></span></td>
+                  <td class="pharmacy-data-cell"><span class="pharmacy-data-content"><span class="pharmacy-cell-icon">${iconSvg('calendar', 17)}</span><span>${p.reservation_count}</span></span></td>
                   <td>${statusBadge(p.verification_status)}${p.correction_reason ? `<div class="text-sm muted mt-8">${escapeHtml(p.correction_reason)}</div>` : ''}</td>
                   <td>
                     <div class="pharmacy-actions">
                     ${verificationActions(p)}
-                    <button class="btn btn-outline btn-sm toggle-reviews-btn" data-id="${p.id}">Reviews (${p.rating_count})</button>
+                    <button class="btn btn-outline btn-sm toggle-reviews-btn" data-id="${p.id}">☆ Reviews (${p.rating_count})</button>
                     ${organizationMenu(p)}
                     </div>
                   </td>
@@ -257,7 +261,7 @@
               `).join('')}
             </tbody>
           </table>
-        </div>
+        </section>
       `;
       wireOrganizationMenus();
       async function toggleBranchSubmission(id) {

@@ -379,6 +379,13 @@ test('publishing validates products atomically and never changes stock or invent
     const validInventoryId = Number(insertInventory.run(staff.pharmacy_id, validMedicineId, 9.5, 4).lastInsertRowid);
     const invalidInventoryId = Number(insertInventory.run(staff.pharmacy_id, invalidMedicineId, 0, 0).lastInsertRowid);
     const expiredInventoryId = Number(insertInventory.run(staff.pharmacy_id, expiredMedicineId, 8, 2).lastInsertRowid);
+    const sourceFolderId = Number(db.prepare(`
+      INSERT INTO folders (pharmacy_id, name, status) VALUES (?, 'P1 Publish Source', 'draft')
+    `).run(staff.pharmacy_id).lastInsertRowid);
+    const destinationFolderId = Number(db.prepare(`
+      INSERT INTO folders (pharmacy_id, name, status) VALUES (?, 'P1 Publish Destination', 'draft')
+    `).run(staff.pharmacy_id).lastInsertRowid);
+    db.prepare('UPDATE inventory SET folder_id = ? WHERE id = ?').run(sourceFolderId, validInventoryId);
     const validBatchId = Number(db.prepare(`
       INSERT INTO medicine_batches (
         pharmacy_id, medicine_id, inventory_id, batch_number, expiration_date,
@@ -413,11 +420,16 @@ test('publishing validates products atomically and never changes stock or invent
     assert.ok(!beforePublish.body.products.some(row => row.inventory_id === validInventoryId));
 
     const publish = callRoute(pharmacyRoutes, '/inventory/publish', 'post', {
-      body: { inventory_ids: [validInventoryId] },
+      body: { inventory_ids: [validInventoryId], folder_id: destinationFolderId },
       session: staffSession,
     });
     assert.equal(publish.statusCode, 200);
     assert.equal(publish.body.published_count, 1);
+    assert.equal(db.prepare('SELECT folder_id FROM inventory WHERE id = ?').get(validInventoryId).folder_id, destinationFolderId);
+    assert.equal(db.prepare('SELECT status FROM folders WHERE id = ?').get(destinationFolderId).status, 'deployed');
+    assert.equal(db.prepare('SELECT status FROM folders WHERE id = ?').get(sourceFolderId).status, 'draft');
+    const inventoryInFolder = callRoute(pharmacyRoutes, '/inventory', 'get', { session: staffSession });
+    assert.ok(inventoryInFolder.body.inventory.some(item => Number(item.id) === validInventoryId && Number(item.folder_id) === destinationFolderId));
     assert.equal(db.prepare('SELECT stock_quantity FROM inventory WHERE id = ?').get(validInventoryId).stock_quantity, 4);
     assert.equal(db.prepare('SELECT current_quantity FROM medicine_batches WHERE inventory_id = ?').get(validInventoryId).current_quantity, 4);
     const originalExpiration = db.prepare('SELECT expiration_date FROM medicine_batches WHERE id = ?').get(validBatchId).expiration_date;

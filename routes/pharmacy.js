@@ -74,7 +74,7 @@ function updateFolderPublishingStatus(folderId) {
     .run(status, status, folderId);
 }
 
-function publishInventoryIds(inventoryIds, pharmacyId, userId, { recordProductHistory = true } = {}) {
+function publishInventoryIds(inventoryIds, pharmacyId, userId, { recordProductHistory = true, folderId = null } = {}) {
   const transaction = db.transaction(() => {
     const issues = {};
     for (const id of inventoryIds) {
@@ -88,6 +88,10 @@ function publishInventoryIds(inventoryIds, pharmacyId, userId, { recordProductHi
     let publishedCount = 0;
     inventoryIds.forEach(id => {
       const item = db.prepare('SELECT * FROM inventory WHERE id = ? AND pharmacy_id = ?').get(id, pharmacyId);
+      const previousFolderId = item.folder_id;
+      if (folderId && Number(previousFolderId) !== Number(folderId)) {
+        db.prepare(`UPDATE inventory SET folder_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).run(folderId, id);
+      }
       if (!item.deployed) {
         db.prepare(`UPDATE inventory SET deployed = 1, deployed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).run(id);
         if (recordProductHistory) {
@@ -98,8 +102,9 @@ function publishInventoryIds(inventoryIds, pharmacyId, userId, { recordProductHi
         `).run(pharmacyId, userId, id, 'Product published.');
         publishedCount += 1;
       }
-      if (item.folder_id) folders.add(item.folder_id);
+      if (previousFolderId) folders.add(previousFolderId);
     });
+    if (folderId) folders.add(folderId);
     folders.forEach(updateFolderPublishingStatus);
     return { published_count: publishedCount };
   });
@@ -648,7 +653,15 @@ router.get('/inventory', (req, res) => {
 router.post('/inventory/publish', (req, res) => {
   const inventoryIds = normalizeInventoryIds(req.body.inventory_ids ?? req.body.inventory_id);
   if (!inventoryIds) return res.status(422).json({ error: 'Select between 1 and 100 valid products to publish.' });
-  const result = publishInventoryIds(inventoryIds, myPharmacyId(req), req.session.user.id);
+  const pid = myPharmacyId(req);
+  let folderId = null;
+  if (req.body.folder_id != null) {
+    folderId = Number(req.body.folder_id);
+    if (!Number.isInteger(folderId) || folderId <= 0) return res.status(422).json({ error: 'Choose a valid Product Folder.' });
+    const folder = db.prepare('SELECT id, status FROM folders WHERE id = ? AND pharmacy_id = ?').get(folderId, pid);
+    if (!folder || folder.status === 'archived') return res.status(422).json({ error: 'Choose a valid, non-archived Product Folder.' });
+  }
+  const result = publishInventoryIds(inventoryIds, pid, req.session.user.id, { folderId });
   if (result.error) return res.status(404).json({ error: result.error });
   if (result.issues) {
     return res.status(422).json({
