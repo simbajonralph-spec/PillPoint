@@ -2,6 +2,7 @@ const express = require('express');
 const session = require('express-session');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
+console.info(`P.A.I. Gemini API key configured: ${process.env.GEMINI_API_KEY ? 'yes' : 'no'}`);
 
 const authRoutes = require('./routes/auth');
 const customerRoutes = require('./routes/customer');

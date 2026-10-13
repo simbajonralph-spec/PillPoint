@@ -6,8 +6,14 @@ const { SAFE_FAILURE_MESSAGE, PaiUnavailableError, searchForCustomer, createAvai
 const { getInventoryInsights } = require('../services/pai/inventory');
 const { getAdminInsights, generateAdminReport } = require('../services/pai/insights');
 const { MAX_MESSAGE_LENGTH, explainInsights } = require('../services/pai/role-assistant');
+const { getCooldownState } = require('../services/pai/gemini');
 
 const router = express.Router();
+
+router.get('/status', requireAuth, (req, res) => {
+  const status = getCooldownState(req.session.user.role);
+  res.json({ active: status.active, retryAfterMs: status.retryAfterMs, reason: status.reason });
+});
 
 function handlePaiFailure(error, res) {
   if (error instanceof PaiUnavailableError) {

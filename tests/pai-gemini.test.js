@@ -169,6 +169,37 @@ test('Gemini opens a short cooldown after repeated transient operation failures'
   resetProviderReliabilityState();
 });
 
+test('a transient provider cooldown for one role does not block another role', async t => {
+  const requests = mockProvider(t, [unavailable()]);
+  const originalInfo = console.info;
+  console.info = () => {};
+  t.after(() => { console.info = originalInfo; });
+  const pharmacyRequest = options => request({ ...options, diagnosticRole: 'pharmacy_staff' });
+  await assert.rejects(pharmacyRequest(), error => error instanceof PaiUnavailableError);
+  await assert.rejects(pharmacyRequest(), error => error instanceof PaiUnavailableError);
+  assert.equal(getCooldownState('pharmacy_staff').active, true);
+  assert.equal(getCooldownState('admin').active, false);
+  await assert.rejects(request({ diagnosticRole: 'admin' }), error => error instanceof PaiUnavailableError);
+  assert.equal(getCooldownState('admin').active, false);
+  assert.equal(requests(), MAX_ATTEMPTS * 3);
+  resetProviderReliabilityState();
+});
+
+test('a quota cooldown blocks requests across all roles', async t => {
+  const requests = mockProvider(t, [{
+    status: 429,
+    body: { error: { code: 429, status: 'RESOURCE_EXHAUSTED', message: 'Free-tier request quota exceeded.' } },
+  }]);
+  await assert.rejects(request({ diagnosticRole: 'customer' }), error => error instanceof PaiUnavailableError);
+  assert.equal(getCooldownState('customer').reason, 'quota_exhausted');
+  assert.equal(getCooldownState('pharmacy_staff').reason, 'quota_exhausted');
+  assert.equal(getCooldownState('admin').active, true);
+  await assert.rejects(request({ diagnosticRole: 'admin' }), error => error instanceof PaiUnavailableError
+    && error.diagnostic.providerCode === 'COOLDOWN');
+  assert.equal(requests(), 1);
+  resetProviderReliabilityState();
+});
+
 test('Gemini does not retry caller-cancelled or timed out requests', async t => {
   const requests = mockProvider(t, [{ waitForAbort: true }]);
   const controller = new AbortController();

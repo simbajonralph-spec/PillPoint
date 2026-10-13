@@ -9,9 +9,8 @@ const COOLDOWN_MS = boundedEnvInt('PAI_GEMINI_COOLDOWN_MS', 10000, 1000, 60000);
 const QUOTA_COOLDOWN_MS = boundedEnvInt('PAI_GEMINI_QUOTA_COOLDOWN_MS', 3600000, 1000, 604800000);
 const TRANSIENT_FAILURE_THRESHOLD = boundedEnvInt('PAI_GEMINI_COOLDOWN_FAILURES', 2, 2, 5);
 const RETRYABLE_STATUSES = new Set([408, 429, 500, 502, 503, 504]);
-let consecutiveTransientFailures = 0;
-let cooldownUntil = 0;
-let cooldownReason = null;
+const reliabilityStateByRole = new Map();
+let quotaCooldownUntil = 0;
 
 function boundedEnvInt(name, fallback, min, max) {
   const value = Number.parseInt(process.env[name], 10);
@@ -170,14 +169,43 @@ function parseRetryAfter(value, now = Date.now()) {
   return Number.isFinite(date) ? Math.max(0, date - now) : null;
 }
 
-function getCooldownState(now = Date.now()) {
-  return { active: cooldownUntil > now, retryAfterMs: Math.max(0, cooldownUntil - now), reason: cooldownReason };
+function getRoleReliabilityState(role = 'unknown') {
+  const key = String(role || 'unknown');
+  if (!reliabilityStateByRole.has(key)) {
+    reliabilityStateByRole.set(key, { consecutiveTransientFailures: 0, cooldownUntil: 0 });
+  }
+  return reliabilityStateByRole.get(key);
+}
+
+function getCooldownState(role, now = Date.now()) {
+  if (typeof role === 'number') {
+    now = role;
+  }
+  if (role === undefined) {
+    const activeRoleStates = [...reliabilityStateByRole.values()].filter(state => state.cooldownUntil > now);
+    const latestRoleState = activeRoleStates.reduce((latest, state) => Math.max(latest, state.cooldownUntil), 0);
+    const activeUntil = Math.max(quotaCooldownUntil, latestRoleState);
+    const reason = quotaCooldownUntil >= latestRoleState && quotaCooldownUntil > now
+      ? 'quota_exhausted'
+      : (latestRoleState > now ? 'provider_failure' : null);
+    return { active: activeUntil > now, retryAfterMs: Math.max(0, activeUntil - now), reason };
+  }
+  const roleState = getRoleReliabilityState(role);
+  const isQuotaCooldownActive = quotaCooldownUntil > now;
+  const isRoleCooldownActive = roleState.cooldownUntil > now;
+  const activeUntil = isQuotaCooldownActive
+    ? Math.max(quotaCooldownUntil, isRoleCooldownActive ? roleState.cooldownUntil : 0)
+    : roleState.cooldownUntil;
+  return {
+    active: activeUntil > now,
+    retryAfterMs: Math.max(0, activeUntil - now),
+    reason: isQuotaCooldownActive ? 'quota_exhausted' : (isRoleCooldownActive ? 'provider_failure' : null),
+  };
 }
 
 function resetProviderReliabilityState() {
-  consecutiveTransientFailures = 0;
-  cooldownUntil = 0;
-  cooldownReason = null;
+  reliabilityStateByRole.clear();
+  quotaCooldownUntil = 0;
 }
 
 function abortable(promise, signal) {
@@ -365,11 +393,11 @@ async function requestJsonCompletion({
     throw error;
   }
 
-  const cooldown = getCooldownState();
-  if (!cooldown.active && cooldownUntil > 0) {
-    consecutiveTransientFailures = 0;
-    cooldownUntil = 0;
-    cooldownReason = null;
+  const roleState = getRoleReliabilityState(diagnosticRole);
+  const cooldown = getCooldownState(diagnosticRole);
+  if (roleState.cooldownUntil > 0 && roleState.cooldownUntil <= Date.now()) {
+    roleState.consecutiveTransientFailures = 0;
+    roleState.cooldownUntil = 0;
   }
   if (cooldown.active) {
     const diagnostic = {
@@ -445,9 +473,8 @@ async function requestJsonCompletion({
             abortSignal: signal,
           },
         }), signal);
-        consecutiveTransientFailures = 0;
-        cooldownUntil = 0;
-        cooldownReason = null;
+        roleState.consecutiveTransientFailures = 0;
+        roleState.cooldownUntil = 0;
         break;
       } catch (error) {
         const providerError = getSafeProviderError(error);
@@ -471,18 +498,17 @@ async function requestJsonCompletion({
     const quotaExhausted = isQuotaExhaustion({ ...safeError, status: finalStatus });
     const transientFailure = RETRYABLE_STATUSES.has(finalStatus) && !quotaExhausted;
     if (quotaExhausted) {
-      cooldownUntil = Date.now() + Math.max(QUOTA_COOLDOWN_MS, providerRetryAfterMs || 0);
-      consecutiveTransientFailures = 0;
-      cooldownReason = 'quota_exhausted';
+      quotaCooldownUntil = Date.now() + Math.max(QUOTA_COOLDOWN_MS, providerRetryAfterMs || 0);
+      roleState.consecutiveTransientFailures = 0;
+      roleState.cooldownUntil = 0;
     } else if (transientFailure) {
-      consecutiveTransientFailures += 1;
-      if (consecutiveTransientFailures >= TRANSIENT_FAILURE_THRESHOLD || (providerRetryAfterMs || 0) > 0) {
-        cooldownUntil = Date.now() + Math.max(COOLDOWN_MS, providerRetryAfterMs || 0);
-        cooldownReason = 'provider_failure';
+      roleState.consecutiveTransientFailures += 1;
+      if (roleState.consecutiveTransientFailures >= TRANSIENT_FAILURE_THRESHOLD || (providerRetryAfterMs || 0) > 0) {
+        roleState.cooldownUntil = Date.now() + Math.max(COOLDOWN_MS, providerRetryAfterMs || 0);
       }
     } else {
-      consecutiveTransientFailures = 0;
-      cooldownReason = null;
+      roleState.consecutiveTransientFailures = 0;
+      roleState.cooldownUntil = 0;
     }
     const diagnostic = {
       role: diagnosticRole,
