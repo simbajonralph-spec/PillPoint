@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "seed": "node db/seed.js",
+    "seed:demo": "node db/seed.js",
     "test": "node --test --test-concurrency=1"
   },
   "dependencies": {

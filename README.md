@@ -67,22 +67,19 @@ Pharmacy P.A.I. insights are calculated from the pharmacy's existing inventory, 
 stock transactions, medicine batches, listed prices, and search activity. They are advisory only:
 P.A.I. does not change stock, batch records, reservations, or prices.
 
-The first time you run it, a `db/pillpoint.db` SQLite file is created automatically and seeded with
-demo pharmacies, medicines, inventory, and three demo accounts:
+The SQLite database is created automatically but demo data is added only by explicit opt-in. To seed
+the local database, set `PILLPOINT_DEMO_SEED=true` and run `npm run seed:demo` (PowerShell steps are
+in [DEMO_CREDENTIALS.md](DEMO_CREDENTIALS.md)). The seed adds seven approved branches and three
+pending applications, with pharmacy-scoped login accounts, inventory, batches, deployment history,
+and reviews. Pending branches have no inventory and are excluded from public discovery. The seed is
+idempotent and never deletes unrelated records. It refuses to run with `NODE_ENV=production`.
 
-| Role           | Email                          | Password             |
-|----------------|----------------------------------|-----------------------|
-| Customer       | customer@pillpoint.test        | password             |
-| Pharmacy Staff | staff@pillpoint.test           | password              |
-| Admin          | PillPointAdmin@gmail.com       | PillPointAdmin123!   |
-
-The pharmacy demo account is scoped to **HealthPlus Pharmacy**, one of four sample pharmacies
-seeded into the database. All sample data (pharmacies, medicines, inventory, the demo accounts
-above) is meant to be replaced once you're ready — delete the sample pharmacies from
-Admin → Manage Pharmacies, or wipe the database as described below and reseed with your own data.
+The demo seed also adds local customer and administrator accounts for reviewing the other domains.
+See [DEMO_CREDENTIALS.md](DEMO_CREDENTIALS.md) for local credentials and the seven verified
+pharmacy logins.
 
 To start fresh, stop the server and delete `db/pillpoint.db` (and the `.db-shm`/`.db-wal` files if
-present) — it will be recreated and reseeded next time you run `npm start`.
+present). It will be recreated on `npm start`; opt into demo data again with the seed command above.
 
 ## Project Structure
 

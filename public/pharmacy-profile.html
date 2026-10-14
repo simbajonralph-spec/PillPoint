@@ -4,7 +4,7 @@
 <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Pharmacy Profile — PillPoint</title>
 <link rel="icon" type="image/svg+xml" href="/img/logo-mark.svg" />
-<link rel="stylesheet" href="/css/style.css?v=20261011-pharmacy-profile-refresh" />
+<link rel="stylesheet" href="/css/style.css?v=20261014-pharmacy-profile-readability" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 </head>
 <body>
@@ -17,6 +17,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 (async function () {
+  document.body.classList.add('pharmacy-profile-view-page');
   let user = null;
   try { user = (await Api.get('/api/auth/me')).user; } catch (err) { /* public profile remains available */ }
   let content;
@@ -82,12 +83,12 @@
       <div class="pharmacy-public-details">
         ${p.rating_count ? `<div class="pharmacy-stars" aria-label="Average rating ${p.average_rating} out of 5">${starsFor(Math.round(p.average_rating))} <strong>${p.average_rating} / 5</strong></div>` : '<div class="pharmacy-stars">☆ No ratings yet</div>'}
         ${p.description ? `<p>${escapeHtml(p.description)}</p>` : ''}
-        <div class="grid grid-2 mt-16" style="gap:10px;">
-          <div class="text-sm"><strong>Address:</strong> ${escapeHtml(p.address)}</div>
-          ${p.phone ? `<div class="text-sm"><strong>Phone:</strong> ${escapeHtml(p.phone)}</div>` : ''}
-          ${p.business_email ? `<div class="text-sm"><strong>Business Email:</strong> <a href="mailto:${escapeHtml(p.business_email)}">${escapeHtml(p.business_email)}</a></div>` : ''}
-          ${p.hours ? `<div class="text-sm"><strong>Hours:</strong> ${escapeHtml(p.hours)}</div>` : ''}
-          ${p.distance_km != null ? `<div class="text-sm" style="font-weight:700;color:var(--teal-dark);">${p.distance_km} km away</div>` : ''}
+        <div class="pharmacy-contact-grid">
+          <div class="pharmacy-contact-item"><strong>Address</strong><span>${escapeHtml(p.address)}</span></div>
+          ${p.phone ? `<div class="pharmacy-contact-item"><strong>Phone</strong><a href="tel:${escapeHtml(p.phone)}">${escapeHtml(p.phone)}</a></div>` : ''}
+          ${p.business_email ? `<div class="pharmacy-contact-item"><strong>Business email</strong><a href="mailto:${escapeHtml(p.business_email)}">${escapeHtml(p.business_email)}</a></div>` : ''}
+          ${p.hours ? `<div class="pharmacy-contact-item"><strong>Operating hours</strong><span>${escapeHtml(p.hours)}</span></div>` : ''}
+          ${p.distance_km != null ? `<div class="pharmacy-contact-distance">${p.distance_km} km away</div>` : ''}
         </div>
       </div>
     </section>
@@ -176,29 +177,21 @@
 
   if (canReview) {
     let selectedRating = data.myRating?.rating || 0;
-    let hoverRating = 0;
     const ratingButtons = [...document.querySelectorAll('.rating-star')];
     const updateRatingPicker = () => ratingButtons.forEach(button => {
-      const active = Number(button.dataset.rating) <= (hoverRating || selectedRating);
+      const active = Number(button.dataset.rating) <= selectedRating;
       button.classList.toggle('selected', active);
       button.setAttribute('aria-pressed', String(Number(button.dataset.rating) === selectedRating));
     });
     const selectedLabel = document.getElementById('rating-selected-label');
-    const updateRatingLabel = () => { selectedLabel.textContent = ratingDescription(hoverRating || selectedRating); };
+    const updateRatingLabel = () => { selectedLabel.textContent = ratingDescription(selectedRating); };
     ratingButtons.forEach(button => button.addEventListener('click', () => {
       selectedRating = Number(button.dataset.rating);
-      hoverRating = 0;
       document.getElementById('submit-review').disabled = false;
       document.getElementById('rating-error').hidden = true;
       updateRatingPicker();
       updateRatingLabel();
     }));
-    ratingButtons.forEach(button => {
-      button.addEventListener('mouseenter', () => { hoverRating = Number(button.dataset.rating); updateRatingPicker(); updateRatingLabel(); });
-      button.addEventListener('focus', () => { hoverRating = Number(button.dataset.rating); updateRatingPicker(); updateRatingLabel(); });
-      button.addEventListener('mouseleave', () => { hoverRating = 0; updateRatingPicker(); updateRatingLabel(); });
-      button.addEventListener('blur', () => { hoverRating = 0; updateRatingPicker(); updateRatingLabel(); });
-    });
     const reviewComment = document.getElementById('review-comment');
     const commentCount = document.getElementById('comment-count');
     reviewComment.addEventListener('input', () => {
