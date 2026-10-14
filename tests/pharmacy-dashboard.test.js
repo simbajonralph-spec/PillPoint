@@ -98,6 +98,12 @@ test('pharmacy analytics uses filtered database records consistently and reports
   const rollback = new Error('rollback pharmacy analytics fixtures');
   const run = db.transaction(() => {
     const today = db.prepare("SELECT date('now','localtime') AS today").get().today;
+    const baselineResponse = getAnalytics({
+      query: { start_date: today, end_date: today },
+      session: { user: { ...staff, role: 'pharmacy_staff' } },
+    });
+    assert.equal(baselineResponse.statusCode, 200);
+    const baseline = baselineResponse.body;
     const medicineId = Number(db.prepare(`
       INSERT INTO medicines (name, category) VALUES ('P9 Analytics Demand Fixture', 'Test')
     `).run().lastInsertRowid);
@@ -150,19 +156,24 @@ test('pharmacy analytics uses filtered database records consistently and reports
     assert.equal(response.statusCode, 200);
     const data = response.body;
     assert.equal(data.dateRange.startDate, today);
-    assert.equal(data.sales.unitsSold, 2);
-    assert.equal(data.sales.revenue, 16);
+    assert.equal(data.sales.unitsSold - baseline.sales.unitsSold, 2);
+    assert.equal(data.sales.revenue - baseline.sales.revenue, 16);
+    assert.equal(data.sales.completedReservations - baseline.sales.completedReservations, 1);
     assert.equal(data.sales.daily.reduce((sum, row) => sum + Number(row.units_sold), 0), data.sales.unitsSold);
     assert.equal(data.sales.weekly.reduce((sum, row) => sum + Number(row.units_sold), 0), data.sales.unitsSold);
     assert.equal(data.sales.monthly.reduce((sum, row) => sum + Number(row.units_sold), 0), data.sales.unitsSold);
     assert.equal(data.demand.mostSearched.find(row => row.medicine_id === medicineId).searches, 1);
     assert.equal(data.demand.highDemandLowStock.find(row => row.inventory_id === inventoryId).available_quantity, 2);
     assert.ok(data.demand.searchedUnavailable.some(row => row.medicine_id === outOfStockMedicine));
-    assert.equal(data.operations.reservationTotal, 4);
-    assert.equal(data.operations.completionRate, 0.25);
-    assert.equal(data.operations.cancellationRate, 0.25);
-    assert.equal(data.operations.expiredReservationRate, 0.25);
-    assert.equal(data.operations.adjustmentFrequency, 1);
+    assert.equal(data.operations.reservationTotal - baseline.operations.reservationTotal, 4);
+    assert.equal(data.operations.completed - baseline.operations.completed, 1);
+    assert.equal(data.operations.cancelled - baseline.operations.cancelled, 1);
+    assert.equal(data.operations.expired - baseline.operations.expired, 1);
+    const expectedTotal = baseline.operations.reservationTotal + 4;
+    assert.equal(data.operations.completionRate, (baseline.operations.completed + 1) / expectedTotal);
+    assert.equal(data.operations.cancellationRate, (baseline.operations.cancelled + 1) / expectedTotal);
+    assert.equal(data.operations.expiredReservationRate, (baseline.operations.expired + 1) / expectedTotal);
+    assert.equal(data.operations.adjustmentFrequency - baseline.operations.adjustmentFrequency, 1);
     assert.equal(data.inventory.stock_turnover.value, null);
     assert.match(data.inventory.stock_turnover.reason, /Insufficient data/);
     assert.equal(

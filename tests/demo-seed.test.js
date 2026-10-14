@@ -11,13 +11,37 @@ test('demo seed creates seven approved and three pending branches and is idempot
   const prior = process.env.PILLPOINT_DEMO_SEED;
   process.env.PILLPOINT_DEMO_SEED = 'true';
   try {
+    const communityRatingsBefore = db.prepare(`SELECT COUNT(*) count
+      FROM pharmacy_ratings r JOIN pharmacies p ON p.id=r.pharmacy_id
+      JOIN users u ON u.id=r.customer_id
+      WHERE p.name LIKE 'Demo %'
+        AND u.email NOT IN (
+          'demo.customer01@pillpoint.test',
+          'demo.customer02@pillpoint.test',
+          'demo.customer03@pillpoint.test'
+        )`).get().count;
     const first = seed(db, bcrypt);
     const snapshot = db.prepare(`SELECT
       (SELECT COUNT(*) FROM pharmacies WHERE name LIKE 'Demo %') pharmacies,
       (SELECT COUNT(*) FROM pharmacies WHERE name LIKE 'Demo %' AND address LIKE '%Tagum City, Davao del Norte%') tagum,
       (SELECT COUNT(*) FROM users WHERE email LIKE 'demo.pharmacy__@pillpoint.test' AND role='pharmacy_staff') accounts,
       (SELECT COUNT(*) FROM inventory i JOIN pharmacies p ON p.id=i.pharmacy_id WHERE p.name LIKE 'Demo %' AND p.verification_stage='APPROVED') inventory,
-      (SELECT COUNT(*) FROM pharmacy_ratings r JOIN pharmacies p ON p.id=r.pharmacy_id WHERE p.name LIKE 'Demo %') ratings,
+      (SELECT COUNT(*) FROM pharmacy_ratings r JOIN pharmacies p ON p.id=r.pharmacy_id
+        JOIN users u ON u.id=r.customer_id
+        WHERE p.name LIKE 'Demo %'
+          AND u.email IN (
+            'demo.customer01@pillpoint.test',
+            'demo.customer02@pillpoint.test',
+            'demo.customer03@pillpoint.test'
+          )) ratings,
+      (SELECT COUNT(*) FROM pharmacy_ratings r JOIN pharmacies p ON p.id=r.pharmacy_id
+        JOIN users u ON u.id=r.customer_id
+        WHERE p.name LIKE 'Demo %'
+          AND u.email NOT IN (
+            'demo.customer01@pillpoint.test',
+            'demo.customer02@pillpoint.test',
+            'demo.customer03@pillpoint.test'
+          )) communityRatings,
       (SELECT COUNT(*) FROM reservations WHERE issue_note='Fictional demo reservation') reservations,
       (SELECT COUNT(*) FROM search_logs WHERE query LIKE 'demo medicine availability %') searches`).get();
     assert.equal(first.demoPharmacies, 10);
@@ -28,6 +52,7 @@ test('demo seed creates seven approved and three pending branches and is idempot
     assert.equal(snapshot.accounts, 10);
     assert.equal(snapshot.inventory, 84);
     assert.equal(snapshot.ratings, 21);
+    assert.equal(snapshot.communityRatings, communityRatingsBefore);
     assert.equal(snapshot.reservations, 7);
     assert.equal(snapshot.searches, 7);
     const beforeCounts = { ...snapshot };
@@ -37,7 +62,22 @@ test('demo seed creates seven approved and three pending branches and is idempot
       (SELECT COUNT(*) FROM pharmacies WHERE name LIKE 'Demo %' AND address LIKE '%Tagum City, Davao del Norte%') tagum,
       (SELECT COUNT(*) FROM users WHERE email LIKE 'demo.pharmacy__@pillpoint.test' AND role='pharmacy_staff') accounts,
       (SELECT COUNT(*) FROM inventory i JOIN pharmacies p ON p.id=i.pharmacy_id WHERE p.name LIKE 'Demo %' AND p.verification_stage='APPROVED') inventory,
-      (SELECT COUNT(*) FROM pharmacy_ratings r JOIN pharmacies p ON p.id=r.pharmacy_id WHERE p.name LIKE 'Demo %') ratings,
+      (SELECT COUNT(*) FROM pharmacy_ratings r JOIN pharmacies p ON p.id=r.pharmacy_id
+        JOIN users u ON u.id=r.customer_id
+        WHERE p.name LIKE 'Demo %'
+          AND u.email IN (
+            'demo.customer01@pillpoint.test',
+            'demo.customer02@pillpoint.test',
+            'demo.customer03@pillpoint.test'
+          )) ratings,
+      (SELECT COUNT(*) FROM pharmacy_ratings r JOIN pharmacies p ON p.id=r.pharmacy_id
+        JOIN users u ON u.id=r.customer_id
+        WHERE p.name LIKE 'Demo %'
+          AND u.email NOT IN (
+            'demo.customer01@pillpoint.test',
+            'demo.customer02@pillpoint.test',
+            'demo.customer03@pillpoint.test'
+          )) communityRatings,
       (SELECT COUNT(*) FROM reservations WHERE issue_note='Fictional demo reservation') reservations,
       (SELECT COUNT(*) FROM search_logs WHERE query LIKE 'demo medicine availability %') searches`).get();
     assert.deepEqual(after, beforeCounts);
